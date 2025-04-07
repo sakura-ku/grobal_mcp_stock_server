@@ -1,16 +1,32 @@
 {
   "compilerOptions": {
+    /* ECMAScriptのターゲットバージョン - ES2022は最新の機能をサポート */
     "target": "ES2022",
+    /* モジュールコード生成方式 - NodeNextはNode.jsのESM対応を有効化 */
     "module": "NodeNext",
+    /* モジュール解決方法 - NodeNextでは'.js'拡張子のインポートに対応 */
     "moduleResolution": "NodeNext",
+    /* CommonJSモジュールをESモジュールとしてインポート可能にする設定 */
     "esModuleInterop": true,
+    /* 厳格な型チェックを有効化 - null/undefinedチェックなど */
     "strict": true,
-    "outDir": "build",
+    /* コンパイル後のファイル出力先ディレクトリ */
+    "outDir": "dist",
+    /* 型定義ファイル(.d.ts)の生成を有効化 */
     "declaration": true,
+    /* デバッグ用ソースマップの生成を有効化 */
     "sourceMap": true,
+    /* ライブラリの型定義ファイルのチェックをスキップしてビルド時間を短縮 */
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    /* ファイル名の大文字小文字の一貫性を強制 */
+    "forceConsistentCasingInFileNames": true,
+    /* 型定義ファイルの解決を改善 */
+    "resolveJsonModule": true,
+    /* パッケージではpackage.jsonのexportsフィールドを優先して解決 */
+    "resolvePackageJsonExports": true
   },
+  /* コンパイル対象のファイルパターン */
   "include": ["src/**/*"],
+  /* コンパイル対象から除外するディレクトリ */
   "exclude": ["node_modules", "build", "dist"]
 }
