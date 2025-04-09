@@ -245,9 +245,10 @@ async function analyzeDataWithLLM(data: any, instructions: string): Promise<Anal
 
 **実装方針**:
 
-- 環境変数を使用したAPIキー管理
+- システム環境変数を使用したAPIキー管理
 - APIクライアントの初期化をシングルトンパターンで実装
 - リトライロジックを含めたエラーハンドリング
+- 環境変数不在時の適切なエラーハンドリング
 
 **実装例**:
 ```typescript
@@ -260,8 +261,9 @@ class OpenAIService {
   private client: OpenAI;
 
   private constructor() {
+    // システム環境変数からAPIキーを取得
     if (!config.openai.apiKey) {
-      throw new Error('OPENAI_API_KEY is not set in environment variables');
+      throw new Error('OPENAI_API_KEY is not set in system environment variables');
     }
 
     this.client = new OpenAI({
@@ -293,8 +295,9 @@ export const openai = openaiService.getClient();
 export const config = {
   // 既存の設定
 
-  // OpenAI API設定
+  // OpenAI API設定（システム環境変数から読み込み）
   openai: {
+    // process.env経由でシステム環境変数にアクセス
     apiKey: process.env.OPENAI_API_KEY,
     timeout: parseInt(process.env.OPENAI_TIMEOUT || '30000'),
     maxRetries: parseInt(process.env.OPENAI_MAX_RETRIES || '3'),
@@ -452,6 +455,131 @@ export function getValidationSchema(schemaName: string): ZodSchema | null {
 3. **GET /api/stocks/compare?symbols=AAPL,MSFT,GOOGL**: 複数株式比較
 4. **GET /api/market/overview?region=global**: 市場概況取得
 
+### 3.5 MCPサーバーの実装と統合 (`src/index.ts`)
+
+MCPサーバーを初期化し、定義したツールを登録して、Expressアプリケーションと統合します:
+
+```typescript
+// src/index.ts の実装例
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import express from 'express';
+import { config } from './config/index.js';
+import apiRouter from './routes/index.js';
+import {
+  getStockPriceDefinition,
+  analyzeStockDefinition,
+  getStockHistoryDefinition,
+  // 他のツール定義をインポート
+} from './tools/stockTools.js';
+
+/**
+ * MCPサーバーを設定する関数
+ */
+async function setupMcpServer() {
+  const mcpServer = new McpServer({
+    id: 'global-mcp-stock-server',
+    name: 'Global MCP Stock Server',
+    description: '株式市場の情報を提供するMCPサーバー',
+    version: '1.0.0'
+  });
+
+  // 株価関連ツールを登録
+  mcpServer.tool(
+    getStockPriceDefinition.name,
+    getStockPriceDefinition.description,
+    { symbol: getStockPriceDefinition.parameters.symbol },
+    getStockPriceDefinition.handler
+  );
+
+  // 他のツールも同様に登録
+  
+  return mcpServer;
+}
+
+/**
+ * サーバーを起動する関数
+ */
+export async function startServer(port: number = config.server.port, host: string = config.server.host) {
+  try {
+    // Expressアプリケーションの初期化
+    const app = express();
+
+    // ミドルウェアの設定
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
+    // MCPサーバーの初期化
+    const mcpServer = await setupMcpServer();
+
+    // APIルートのマウント
+    app.use('/api', apiRouter);
+
+    // フロントエンドのHTMLを提供
+    app.get('/', (req, res) => {
+      res.send(`...`); // テストUI
+    });
+
+    // サーバーを起動
+    const server = app.listen(port, host, () => {
+      console.log(`サーバーが起動しました: http://${host}:${port}`);
+    });
+
+    // グレースフルシャットダウン処理
+    const gracefulShutdown = async () => {
+      await mcpServer.close();
+      server.close();
+    };
+
+    // シグナルハンドラの設定
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
+
+    return server;
+  } catch (error) {
+    console.error('サーバー起動エラー:', error);
+    process.exit(1);
+  }
+}
+
+// スタンドアロンで実行された場合は自動的にサーバーを起動
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startServer();
+}
+```
+
+### 3.6 コマンドラインインターフェース (`src/bin.ts`)
+
+サーバーをnpmパッケージとして実行できるようにCLIを実装します:
+
+```typescript
+#!/usr/bin/env node
+import { startServer } from './index.js';
+
+// コマンドライン引数の処理
+const args = process.argv.slice(2);
+let port: number | undefined;
+let host: string | undefined;
+
+// 引数からポートとホストを取得
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--port' && i + 1 < args.length) {
+    port = parseInt(args[i + 1], 10);
+    i++;
+  } else if (args[i] === '--host' && i + 1 < args.length) {
+    host = args[i + 1];
+    i++;
+  }
+}
+
+// サーバー起動
+try {
+  startServer(port, host);
+} catch (error) {
+  console.error('起動エラー:', error);
+  process.exit(1);
+}
+```
+
 ## 4. 実装優先順位
 
 機能の重要性と実装の複雑さに基づいて、以下の順序で実装を進める:
@@ -519,3 +647,230 @@ OPENAI_MAX_RETRIES=3
 ```
 
 `.env.example`ファイルにも同様の変更を加え、ドキュメントを更新します。
+
+### 8.1 システム環境変数の使用
+
+セキュリティ強化のため、機密情報（API キーやトークン）はシステム環境変数から参照することを**強く推奨**します：
+
+1. **システム環境変数の設定（Windows PowerShell）**:
+```powershell
+# 永続的なユーザー環境変数の設定
+[Environment]::SetEnvironmentVariable('NPM_TOKEN', '実際のトークン値', 'User')
+[Environment]::SetEnvironmentVariable('OPENAI_API_KEY', '実際のAPIキー値', 'User')
+
+# 現在のセッションでのみ有効な環境変数の設定
+$env:NPM_TOKEN = '実際のトークン値'
+$env:OPENAI_API_KEY = '実際のAPIキー値'
+```
+
+2. **システム環境変数の設定確認**:
+```powershell
+# 永続的に設定された環境変数の確認
+[Environment]::GetEnvironmentVariable('NPM_TOKEN', 'User')
+[Environment]::GetEnvironmentVariable('OPENAI_API_KEY', 'User')
+
+# 現在のセッションでの環境変数の確認
+echo $env:NPM_TOKEN
+echo $env:OPENAI_API_KEY
+```
+
+3. **.env ファイルの記述例**:
+```
+# サーバー設定
+PORT=3000
+HOST=localhost
+
+# GitHub Package Configuration
+# NPM_TOKENはシステム環境変数から読み込むため、ここでは設定しない
+
+# OpenAI API Configuration
+# OPENAI_API_KEYはシステム環境変数から読み込むため、ここでは設定しない
+OPENAI_TIMEOUT=30000
+OPENAI_MAX_RETRIES=3
+
+# 他の非機密設定
+LOG_LEVEL=info
+CACHE_TTL=3600
+```
+
+4. **.npmrc ファイルの設定例**:
+```
+@sakura-ku:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+```
+
+5. **コードでの環境変数参照方法**:
+```typescript
+// src/config/index.ts
+export const config = {
+  // ...
+  github: {
+    token: process.env.NPM_TOKEN, // システム環境変数から参照
+  },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY, // システム環境変数から参照
+    timeout: parseInt(process.env.OPENAI_TIMEOUT || '30000'),
+    maxRetries: parseInt(process.env.OPENAI_MAX_RETRIES || '3'),
+  },
+};
+```
+
+この方法により:
+- 機密情報がソースコード管理から除外される
+- リポジトリに機密情報が漏洩するリスクが低減される
+- 環境間でのセキュアな設定切り替えが容易になる
+- CI/CDパイプラインとの親和性が高まる
+- 複数開発者間でのセキュリティが向上する
+```
+
+## 5. MCPツールの実装と登録
+
+MCPツールの実装と登録は、TypeScript移植において重要なステップです。このセクションでは、MCPツールを実装する方法と、それをMCPサーバーに登録する方法について説明します。
+
+### 5.1 MCPツールの実装
+
+MCPツールは`src/tools/`ディレクトリに実装します。現在のプロジェクト構造では、`src/tools/stockTools.ts`に株価関連のツール定義が含まれています。
+
+以下はMCPツール実装の基本構造です：
+
+```typescript
+// ツール定義の例（src/tools/stockTools.ts）
+export const myToolDefinition = {
+  name: 'tool_name',  // ツールの名前
+  description: 'ツールの説明',  // ツールの説明
+  parameters: {
+    // ツールのパラメータ定義（zod schemaを使用）
+    param1: z.string().describe('パラメータ1の説明'),
+  },
+  handler: async (params: { param1: string }) => {
+    // サービスレイヤーの呼び出し
+    const result = await myService.doSomething(params.param1);
+    
+    // MCPフォーマットで結果を返す
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
+};
+```
+
+高度なカスタムツールの場合は、次のパターンを使用することもできます：
+
+```typescript
+// 独自のツールインターフェース
+interface Tool {
+  name: string;
+  description: string;
+  parameters: {
+    type: string;
+    properties: Record<string, any>;
+    required: string[];
+  };
+  execute: (params: any) => Promise<any>;
+}
+
+// カスタムツール定義
+export const myCustomTool: Tool = {
+  name: 'custom_tool',
+  description: 'カスタムツールの説明',
+  parameters: {
+    type: 'object',
+    properties: {
+      param1: {
+        type: 'string',
+        description: 'パラメータ1の説明'
+      },
+      param2: {
+        type: 'number',
+        description: 'パラメータ2の説明'
+      }
+    },
+    required: ['param1']
+  },
+  execute: async ({ param1, param2 = 0 }: { param1: string; param2?: number }) => {
+    // サービスレイヤーの呼び出し
+    return await myService.doSomething(param1, param2);
+  }
+};
+```
+
+### 5.2 MCPサーバーへのツール登録
+
+実装したツールを使用するには、MCPサーバーにツールを登録する必要があります。これは、`src/index.ts`ファイルで行われます。
+
+以下はツール登録のコード例です：
+
+```typescript
+// src/index.ts
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { myToolDefinition, myCustomTool } from './tools/myTools.js';
+
+async function setupMcpServer() {
+  const mcpServer = new McpServer({
+    id: 'my-mcp-server',
+    name: 'My MCP Server',
+    description: 'サーバーの説明',
+    version: '1.0.0'
+  });
+
+  // 標準的なツール定義の登録
+  mcpServer.tool(
+    myToolDefinition.name,
+    myToolDefinition.description,
+    { param1: myToolDefinition.parameters.param1 },
+    myToolDefinition.handler
+  );
+
+  // カスタムツールの登録
+  mcpServer.tool(
+    myCustomTool.name,
+    myCustomTool.description,
+    // zodスキーマをMCPツール用にフォーマット
+    { 
+      param1: z.string().describe('パラメータ1の説明'),
+      param2: z.number().optional().default(0).describe('パラメータ2の説明'),
+    },
+    async (params) => {
+      const result = await myCustomTool.execute(params);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    }
+  );
+
+  return mcpServer;
+}
+```
+
+### 5.3 ツール実装のベストプラクティス
+
+1. **関心の分離**:
+   - ツール定義ファイルはインターフェースの定義のみに集中する
+   - ビジネスロジックはサービス層に委譲する
+
+2. **エラーハンドリング**:
+   - すべてのツール処理で適切なエラーハンドリングを行う
+   - ユーザーフレンドリーなエラーメッセージを返す
+
+3. **パラメータのバリデーション**:
+   - zodスキーマを使用して入力パラメータをバリデーションする
+   - 明確な説明と型定義を提供する
+
+4. **ツールのグループ化**:
+   - 関連するツールを同じファイルに収める
+   - 論理的なグループでファイルを分割する
+
+5. **ドキュメンテーション**:
+   - 各ツールに詳細な説明を提供する
+   - パラメータの説明を明確にする
+   - 戻り値の形式を文書化する

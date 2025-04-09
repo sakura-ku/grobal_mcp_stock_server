@@ -24,6 +24,12 @@ export const config = {
     enabled: process.env.ENABLE_CACHE === 'true',
     ttl: process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 300, // 秒単位
   },
+  openai: {
+    // OpenAI API設定
+    apiKey: process.env.OPENAI_API_KEY,
+    timeout: process.env.OPENAI_TIMEOUT ? parseInt(process.env.OPENAI_TIMEOUT) : 30000,
+    maxRetries: process.env.OPENAI_MAX_RETRIES ? parseInt(process.env.OPENAI_MAX_RETRIES) : 3,
+  },
 };
 
 export default config;

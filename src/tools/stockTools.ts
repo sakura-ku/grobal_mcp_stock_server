@@ -1,4 +1,17 @@
-import { stockService, stockSymbolSchema } from '../services/stockService.js';
+import { stockService, stockSymbolSchema, stockHistorySchema, stockSearchSchema, portfolioSchema } from '../services/stockService.js';
+import { StockTrendAnalysis } from '../types/stock.js';
+
+// MCPツール定義のためのインターフェース
+interface Tool {
+  name: string;
+  description: string;
+  parameters: {
+    type: string;
+    properties: Record<string, any>;
+    required: string[];
+  };
+  execute: (params: any, service?: any) => Promise<any>;
+}
 
 /**
  * 株価取得ツールの定義
@@ -81,4 +94,147 @@ export const getMultipleStockPricesDefinition = {
       ],
     };
   }
-}; 
+};
+
+/**
+ * 株価履歴データ取得ツールの定義
+ */
+export const getStockHistoryDefinition = {
+  name: 'get_stock_history',
+  description: '指定された株式銘柄の過去の株価データを取得します',
+  parameters: {
+    symbol: stockHistorySchema.shape.symbol,
+    interval: stockHistorySchema.shape.interval,
+    range: stockHistorySchema.shape.range,
+  },
+  handler: async (params: { symbol: string; interval: 'daily' | 'weekly' | 'monthly'; range?: string }) => {
+    const { symbol, interval, range } = params;
+    
+    // サービスレイヤーを呼び出し
+    const historyData = await stockService.getStockHistory(symbol, interval, range);
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(historyData, null, 2),
+        },
+      ],
+    };
+  }
+};
+
+/**
+ * 株式詳細情報取得ツールの定義
+ */
+export const getStockDetailsDefinition = {
+  name: 'get_stock_details',
+  description: '指定された株式銘柄の詳細な財務情報や価格情報を取得します',
+  parameters: {
+    symbol: stockSymbolSchema.shape.symbol,
+  },
+  handler: async (params: { symbol: string }) => {
+    const { symbol } = params;
+    
+    // サービスレイヤーを呼び出し
+    const detailsData = await stockService.getStockDetails(symbol);
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(detailsData, null, 2),
+        },
+      ],
+    };
+  }
+};
+
+/**
+ * 株式検索ツールの定義
+ */
+export const searchStocksDefinition = {
+  name: 'search_stocks',
+  description: 'キーワードに基づいて株式銘柄を検索します',
+  parameters: {
+    query: stockSearchSchema.shape.query,
+  },
+  handler: async (params: { query: string }) => {
+    const { query } = params;
+    
+    // サービスレイヤーを呼び出し
+    const searchResults = await stockService.searchStocks(query);
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(searchResults, null, 2),
+        },
+      ],
+    };
+  }
+};
+
+/**
+ * ポートフォリオ分析ツールの定義
+ */
+export const analyzePortfolioDefinition = {
+  name: 'analyze_portfolio',
+  description: '保有株式ポートフォリオのパフォーマンスと特性を分析します',
+  parameters: {
+    holdings: portfolioSchema.shape.holdings,
+  },
+  handler: async (params: { holdings: Array<{symbol: string; quantity: number; purchasePrice?: number}> }) => {
+    const { holdings } = params;
+    
+    // サービスレイヤーを呼び出し
+    const portfolioAnalysis = await stockService.analyzePortfolio(holdings);
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(portfolioAnalysis, null, 2),
+        },
+      ],
+    };
+  }
+};
+
+/**
+ * 詳細な株価トレンド分析を行うツール
+ */
+export const analyzeStockTrendTool: Tool = {
+  name: 'analyze_stock_trend',
+  description: '指定された株式シンボルの詳細なトレンド分析を行います。複数のテクニカル指標を用いて、現在のトレンド方向、強度、サポート/レジスタンスレベル、推奨アクションなどを提供します。',
+  parameters: {
+    type: 'object',
+    properties: {
+      symbol: {
+        type: 'string',
+        description: '分析する株式のシンボル（例：AAPL, MSFT, GOOG）'
+      },
+      period: {
+        type: 'number',
+        description: '分析する期間（日数）。デフォルトは60日。'
+      }
+    },
+    required: ['symbol']
+  },
+  execute: async ({ symbol, period = 60 }: { symbol: string; period?: number }): Promise<StockTrendAnalysis> => {
+    return await stockService.analyzeStockTrend(symbol, period);
+  }
+};
+
+// 全ツール定義をエクスポート
+export const stockTools = [
+  getStockPriceDefinition,
+  getMultipleStockPricesDefinition,
+  analyzeStockDefinition,
+  getStockHistoryDefinition,
+  getStockDetailsDefinition,
+  searchStocksDefinition,
+  analyzePortfolioDefinition,
+  analyzeStockTrendTool
+]; 

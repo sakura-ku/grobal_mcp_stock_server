@@ -2,10 +2,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import express from 'express';
 import { config } from './config/index.js';
 import apiRouter from './routes/index.js';
+import { z } from 'zod';
 import {
   getStockPriceDefinition,
   analyzeStockDefinition,
-  getMultipleStockPricesDefinition
+  getMultipleStockPricesDefinition,
+  getStockHistoryDefinition,
+  getStockDetailsDefinition,
+  searchStocksDefinition,
+  analyzePortfolioDefinition,
+  analyzeStockTrendTool,
+  stockTools
 } from './tools/stockTools.js';
 
 /**
@@ -19,7 +26,7 @@ async function setupMcpServer() {
     version: '1.0.0'
   });
 
-  // 株価関連ツールの登録
+  // 基本的な株価関連ツール
   mcpServer.tool(
     getStockPriceDefinition.name,
     getStockPriceDefinition.description,
@@ -39,6 +46,64 @@ async function setupMcpServer() {
     getMultipleStockPricesDefinition.description,
     { symbols: getMultipleStockPricesDefinition.parameters.symbols },
     getMultipleStockPricesDefinition.handler
+  );
+
+  // 株価履歴データ取得ツール
+  mcpServer.tool(
+    getStockHistoryDefinition.name,
+    getStockHistoryDefinition.description,
+    { 
+      symbol: getStockHistoryDefinition.parameters.symbol,
+      interval: getStockHistoryDefinition.parameters.interval,
+      range: getStockHistoryDefinition.parameters.range
+    },
+    getStockHistoryDefinition.handler
+  );
+
+  // 株式詳細情報取得ツール
+  mcpServer.tool(
+    getStockDetailsDefinition.name,
+    getStockDetailsDefinition.description,
+    { symbol: getStockDetailsDefinition.parameters.symbol },
+    getStockDetailsDefinition.handler
+  );
+
+  // 株式検索ツール
+  mcpServer.tool(
+    searchStocksDefinition.name,
+    searchStocksDefinition.description,
+    { query: searchStocksDefinition.parameters.query },
+    searchStocksDefinition.handler
+  );
+
+  // ポートフォリオ分析ツール
+  mcpServer.tool(
+    analyzePortfolioDefinition.name,
+    analyzePortfolioDefinition.description,
+    { holdings: analyzePortfolioDefinition.parameters.holdings },
+    analyzePortfolioDefinition.handler
+  );
+
+  // 詳細な株価トレンド分析ツール
+  mcpServer.tool(
+    'analyze_stock_trend',
+    '指定された株式シンボルの詳細なトレンド分析を行います',
+    { 
+      symbol: z.string().min(1).max(10).describe('分析する株式のシンボル（例：AAPL, MSFT）'),
+      period: z.number().or(z.string().transform(val => parseInt(val, 10) || 60)).optional().default(60)
+        .describe('分析する期間（日数）')
+    },
+    async (params: { symbol: string; period?: number }) => {
+      const result = await analyzeStockTrendTool.execute(params);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    }
   );
 
   return mcpServer;
