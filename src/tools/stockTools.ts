@@ -1,4 +1,5 @@
 import { stockService, stockSymbolSchema, stockHistorySchema, stockSearchSchema, portfolioSchema } from '../services/stockService.js';
+import { stockAnalysisService, trendAnalysisSchema, stockPredictionSchema, technicalAnalysisSchema } from '../services/stockAnalysisService.js';
 import { StockTrendAnalysis } from '../types/stock.js';
 
 // MCPツール定義のためのインターフェース
@@ -223,7 +224,69 @@ export const analyzeStockTrendTool: Tool = {
     required: ['symbol']
   },
   execute: async ({ symbol, period = 60 }: { symbol: string; period?: number }): Promise<StockTrendAnalysis> => {
-    return await stockService.analyzeStockTrend(symbol, period);
+    return await stockAnalysisService.analyzeStockTrend(symbol, period);
+  }
+};
+
+/**
+ * 株価予測ツールの定義
+ */
+export const predictStockPriceTool: Tool = {
+  name: 'predict_stock_price',
+  description: '株価の将来予測を行います。過去のデータパターンと現在のトレンドに基づいて、指定した期間の価格予測を提供します。',
+  parameters: {
+    type: 'object',
+    properties: {
+      symbol: {
+        type: 'string',
+        description: '予測する株式のシンボル（例：AAPL, MSFT, GOOG）'
+      },
+      days: {
+        type: 'number',
+        description: '予測する日数（1〜30）。デフォルトは7日。'
+      },
+      history_period: {
+        type: 'string',
+        description: '予測に使用する過去データの期間（例：1mo, 3mo, 6mo, 1y）。デフォルトは1y。'
+      }
+    },
+    required: ['symbol']
+  },
+  execute: async ({ symbol, days = 7, history_period = '1y' }: { symbol: string; days?: number; history_period?: string }) => {
+    return await stockAnalysisService.predictStockPrice(symbol, days, history_period);
+  }
+};
+
+/**
+ * テクニカル分析ツールの定義
+ */
+export const analyzeTechnicalTool: Tool = {
+  name: 'analyze_technical',
+  description: '株式のテクニカル分析を行います。移動平均、RSI、MACD、ボリンジャーバンドなど、複数のテクニカル指標を計算し、トレードシグナルを提供します。',
+  parameters: {
+    type: 'object',
+    properties: {
+      symbol: {
+        type: 'string',
+        description: '分析する株式のシンボル（例：AAPL, MSFT, GOOG）'
+      },
+      interval: {
+        type: 'string',
+        enum: ['daily', 'weekly', 'monthly'],
+        description: '分析間隔。デフォルトはdaily。'
+      },
+      indicators: {
+        type: 'array',
+        items: {
+          type: 'string'
+        },
+        description: '分析する指標のリスト（指定がない場合は全指標）'
+      }
+    },
+    required: ['symbol']
+  },
+  execute: async ({ symbol, interval = 'daily', indicators }: { symbol: string; interval?: 'daily' | 'weekly' | 'monthly'; indicators?: string[] }) => {
+    return await stockAnalysisService.analyzeTechnical(symbol, interval, indicators);
   }
 };
 
@@ -236,5 +299,7 @@ export const stockTools = [
   getStockDetailsDefinition,
   searchStocksDefinition,
   analyzePortfolioDefinition,
-  analyzeStockTrendTool
+  analyzeStockTrendTool,
+  predictStockPriceTool,
+  analyzeTechnicalTool
 ]; 

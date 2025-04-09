@@ -12,7 +12,9 @@ import {
   searchStocksDefinition,
   analyzePortfolioDefinition,
   analyzeStockTrendTool,
-  stockTools
+  stockTools,
+  predictStockPriceTool,
+  analyzeTechnicalTool
 } from './tools/stockTools.js';
 
 /**
@@ -60,7 +62,7 @@ async function setupMcpServer() {
     getStockHistoryDefinition.handler
   );
 
-  // 株式詳細情報取得ツール
+  // 株価詳細情報取得ツール
   mcpServer.tool(
     getStockDetailsDefinition.name,
     getStockDetailsDefinition.description,
@@ -84,26 +86,39 @@ async function setupMcpServer() {
     analyzePortfolioDefinition.handler
   );
 
-  // 詳細な株価トレンド分析ツール
+  // 株価分析関連のツール - Toolインターフェース実装のため個別にparametersを変換
   mcpServer.tool(
-    'analyze_stock_trend',
-    '指定された株式シンボルの詳細なトレンド分析を行います',
-    { 
-      symbol: z.string().min(1).max(10).describe('分析する株式のシンボル（例：AAPL, MSFT）'),
-      period: z.number().or(z.string().transform(val => parseInt(val, 10) || 60)).optional().default(60)
-        .describe('分析する期間（日数）')
+    analyzeStockTrendTool.name,
+    analyzeStockTrendTool.description,
+    {
+      symbol: z.string().describe(analyzeStockTrendTool.parameters.properties.symbol.description),
+      period: z.number().optional().describe(analyzeStockTrendTool.parameters.properties.period.description)
     },
-    async (params: { symbol: string; period?: number }) => {
-      const result = await analyzeStockTrendTool.execute(params);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    }
+    analyzeStockTrendTool.execute
+  );
+
+  // 株価予測ツール
+  mcpServer.tool(
+    predictStockPriceTool.name,
+    predictStockPriceTool.description,
+    {
+      symbol: z.string().describe(predictStockPriceTool.parameters.properties.symbol.description),
+      days: z.number().optional().describe(predictStockPriceTool.parameters.properties.days.description),
+      history_period: z.string().optional().describe(predictStockPriceTool.parameters.properties.history_period.description)
+    },
+    predictStockPriceTool.execute
+  );
+
+  // テクニカル分析ツール
+  mcpServer.tool(
+    analyzeTechnicalTool.name,
+    analyzeTechnicalTool.description,
+    {
+      symbol: z.string().describe(analyzeTechnicalTool.parameters.properties.symbol.description),
+      interval: z.enum(['daily', 'weekly', 'monthly']).optional().describe(analyzeTechnicalTool.parameters.properties.interval.description),
+      indicators: z.array(z.string()).optional().describe(analyzeTechnicalTool.parameters.properties.indicators.description)
+    },
+    analyzeTechnicalTool.execute
   );
 
   return mcpServer;

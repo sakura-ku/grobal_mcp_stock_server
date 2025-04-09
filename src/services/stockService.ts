@@ -582,23 +582,19 @@ class StockService {
         riskMetrics.beta = weightedBetaSum / weightSum;
       }
       
-      // パフォーマンスメトリクスは実際のデータがないのでダミー値を設定
-      const performance = {
-        daily: 0,
-        weekly: 0,
-        monthly: 0,
-        ytd: 0,
-        yearly: 0
-      };
+      // 通貨情報を取得 (最初の株式の通貨を使用)
+      const currency = stockPrices.length > 0 ? stockPrices[0].currency : 'USD';
       
       return {
-        holdings: holdingsData,
         totalValue,
-        totalGainLoss,
-        totalGainLossPercent,
-        sectorAllocation,
+        totalChange: totalGainLoss,
+        totalChangePercent: totalGainLossPercent,
+        holdings: holdingsData,
+        diversification: {
+          bySector: sectorAllocation
+        },
         riskMetrics,
-        performance,
+        currency,
         lastUpdated: new Date().toISOString()
       };
     } catch (error) {

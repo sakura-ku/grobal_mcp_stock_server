@@ -284,6 +284,9 @@ export interface StockTrendAnalysis {
 
 // ポートフォリオパフォーマンス分析の型
 export interface PortfolioPerformance {
+  totalValue: number;
+  totalChange: number;
+  totalChangePercent: number;
   holdings: Array<{
     symbol: string;
     name: string;
@@ -293,24 +296,90 @@ export interface PortfolioPerformance {
     totalValue: number;
     gainLoss: number;
     gainLossPercent: number;
-    weight: number; // ポートフォリオに占める割合（%）
+    weight: number;
   }>;
-  totalValue: number;
-  totalGainLoss: number;
-  totalGainLossPercent: number;
-  sectorAllocation: Record<string, number>; // セクター別の配分（%）
+  diversification: {
+    bySector?: {
+      [key: string]: number;
+    };
+    byMarketCap?: {
+      large: number;
+      mid: number;
+      small: number;
+    };
+  };
   riskMetrics: {
     volatility: number;
     beta: number;
     sharpeRatio: number;
     drawdown: number;
   };
-  performance: {
-    daily: number;
-    weekly: number;
-    monthly: number;
-    ytd: number;
-    yearly: number;
-  };
+  currency: string;
   lastUpdated: string;
+}
+
+// 株価予測結果の型定義
+export interface StockPrediction {
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  predictions: Array<{
+    date: string;
+    price: number;
+    rangeHigh: number;
+    rangeLow: number;
+    confidence: 'high' | 'medium' | 'low';
+  }>;
+  trend: 'bullish' | 'bearish' | 'neutral';
+  volatility: number;
+  method: string;
+  confidenceScore: number;
+  lastUpdated: string;
+}
+
+// テクニカル分析結果の型定義
+export interface TechnicalAnalysisResult {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  percentChange: number;
+  timeframe: 'daily' | 'weekly' | 'monthly';
+  timestamp: string;
+  analysis: {
+    trend: 'bullish' | 'bearish' | 'neutral';
+    strength: number;
+    indicators: {
+      movingAverages: {
+        sma: {
+          sma20: number;
+          sma50: number;
+          sma200: number;
+        };
+        ema: {
+          ema12: number;
+          ema26: number;
+        };
+      };
+      rsi: number;
+      macd: {
+        line: number;
+        signal: number;
+        histogram: number;
+      };
+      bollingerBands: {
+        upper: number;
+        middle: number;
+        lower: number;
+        width: number;
+      };
+      stochasticOscillator: {
+        k: number;
+        d: number;
+      };
+    };
+    signals: {
+      [key: string]: string;
+    };
+  };
 }
