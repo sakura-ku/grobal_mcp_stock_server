@@ -12,6 +12,16 @@ import { stockService } from './stockService.js';
 import { logger } from '../utils/logger.js';
 import { openaiService } from './openaiService.js';
 import { dataAnalyzerService } from './dataAnalyzerService.js';
+// 技術分析ライブラリをインポート（型エラーがあるためコメントアウト、後日対応）
+// import {
+//   SMA,
+//   EMA,
+//   RSI,
+//   MACD,
+//   BollingerBands,
+//   Stochastic,
+//   ATR
+// } from 'technicalindicators';
 
 // パラメータのバリデーションスキーマ
 export const trendAnalysisSchema = z.object({
@@ -36,7 +46,7 @@ export const technicalAnalysisSchema = z.object({
  */
 class StockAnalysisService {
   /**
-   * 株価のトレンド分析を行う
+   * 株価のトレンドを分析する
    * @param symbol 株式銘柄コード
    * @param period 分析期間（日数）
    * @returns トレンド分析結果
@@ -47,96 +57,137 @@ class StockAnalysisService {
     }
     
     try {
-      logger.info(`株価トレンド分析開始: ${symbol}, 期間: ${period}日`);
+      // 株価履歴を取得
+      const history = await stockService.getStockHistory(symbol, 'daily', '6m');
       
-      // 基本株価データを取得
-      const stockData = await stockService.getStockPrice(symbol);
-      
-      // 株価履歴を取得（日次データ）
-      const historyData = await stockService.getStockHistory(symbol, 'daily', period <= 30 ? '1mo' : 
-                                                            period <= 90 ? '3mo' : 
-                                                            period <= 180 ? '6mo' : '1y');
-      
-      if (!historyData.data || historyData.data.length < 10) {
+      if (!history.data || history.data.length < 20) {
         throw new InvalidParameterError('分析に十分なデータがありません');
       }
       
-      // 期間を制限
-      const historyResult = historyData.data.slice(0, period);
+      // 終値データを配列として取得
+      const closes = history.data.map(item => item.close);
       
-      // 基本的な価格情報を計算
-      const currentPrice = stockData.price;
-      const priceChange = stockData.change;
+      // 移動平均の計算
+      const sma20Values = this.calculateSMAArray(closes, 20);
+      const sma50Values = this.calculateSMAArray(closes, 50);
+      const sma200 = this.calculateSMA(closes, 200);
       
-      // 最近のデータの平均価格を計算
-      const recentDataCount = Math.min(5, historyResult.length);
-      const recentData = historyResult.slice(0, recentDataCount);
-      const recentAverage = recentData.reduce((sum, item) => sum + item.close, 0) / recentDataCount;
+      // 現在の値を取得（配列の最新値）
+      const sma20 = sma20Values.length > 0 ? sma20Values[0] : this.calculateSMA(closes, 20);
+      const sma50 = sma50Values.length > 0 ? sma50Values[0] : this.calculateSMA(closes, 50);
       
-      // トレンド強度の初期値
-      let trendStrength = 0;
+      // 指数移動平均の計算
+      const ema12Values = this.calculateEMAArray(closes, 12);
+      const ema26Values = this.calculateEMAArray(closes, 26);
       
-      if (historyResult.length > 10) {
-        // 10日間の価格変化率をベースに強度を計算
-        const oldPrice = historyResult[10].close;
-        const newPrice = historyResult[0].close;
-        trendStrength = (newPrice - oldPrice) / oldPrice;
-        
-        // -1.0 から 1.0 の範囲に収める
-        trendStrength = Math.max(-1.0, Math.min(1.0, trendStrength));
-      }
+      // 現在の値を取得
+      const ema12 = ema12Values.length > 0 ? ema12Values[0] : this.calculateEMA(closes, 12);
+      const ema26 = ema26Values.length > 0 ? ema26Values[0] : this.calculateEMA(closes, 26);
       
-      // トレンド方向を判定
-      let trend: 'bullish' | 'bearish' | 'neutral';
-      if (trendStrength > 0.05) {
+      // MACD計算
+      const macdLine = ema12 - ema26;
+      const signalLine = this.calculateEMA([macdLine], 9);
+      const macdHistogram = macdLine - signalLine;
+      
+      // RSI計算 (14日間)
+      const rsi = this.calculateRSI(closes, 14);
+      
+      // ボリンジャーバンド計算
+      const bollingerBands = this.calculateBollingerBands(closes, 20, 2);
+      
+      // ストキャスティクスの計算
+      const stochastics = this.calculateStochastics(
+        history.data.map(item => item.high),
+        history.data.map(item => item.low),
+        closes,
+        14,
+        3
+      );
+      
+      // トレンドの判定
+      let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      let strengthScore = 50; // 0-100のスケール
+      
+      // 短期移動平均が長期移動平均を上回る = 上昇トレンド
+      if (sma20 > sma50 && sma50 > sma200) {
         trend = 'bullish';
-      } else if (trendStrength < -0.05) {
+        strengthScore += 20;
+      } 
+      // 短期移動平均が長期移動平均を下回る = 下降トレンド
+      else if (sma20 < sma50 && sma50 < sma200) {
         trend = 'bearish';
-      } else {
-        trend = 'neutral';
+        strengthScore -= 20;
       }
       
-      // ボラティリティを計算
-      const prices = historyResult.map(item => item.close);
-      const sumSquares = prices.reduce((sum, price) => {
-        const diff = price - recentAverage;
-        return sum + diff * diff;
-      }, 0);
-      const volatility = Math.sqrt(sumSquares / prices.length);
-      
-      // 信頼度を決定
-      let confidenceLevel: 'high' | 'medium' | 'low' = 'medium';
-      if (Math.abs(trendStrength) > 0.1) {
-        confidenceLevel = 'high';
-      } else if (Math.abs(trendStrength) < 0.03) {
-        confidenceLevel = 'low';
+      // RSIによる過買い/過売り判定
+      if (rsi > 70) {
+        trend = 'bearish'; // 過買い
+        strengthScore = Math.max(strengthScore - 10, 0);
+      } else if (rsi < 30) {
+        trend = 'bullish'; // 過売り
+        strengthScore = Math.min(strengthScore + 10, 100);
       }
       
-      // テクニカル指標を計算
-      const technicalIndicators = this.calculateTechnicalIndicators(prices, historyResult);
+      // MACDシグナルによる強度調整
+      if (macdLine > signalLine && macdLine > 0) {
+        if (trend === 'bullish') strengthScore = Math.min(strengthScore + 15, 100);
+        else trend = 'bullish';
+      } else if (macdLine < signalLine && macdLine < 0) {
+        if (trend === 'bearish') strengthScore = Math.max(strengthScore - 15, 0);
+        else trend = 'bearish';
+      }
       
-      // サポートとレジスタンスレベルを決定
-      const min = Math.min(...prices.slice(0, 20));
-      const max = Math.max(...prices.slice(0, 20));
+      // ボラティリティの計算（20日間の標準偏差）
+      const volatility = bollingerBands.standardDeviation;
       
-      // 分析結果を返す
+      // サポート/レジスタンスレベルの特定
+      const supportLevel = Math.min(...closes.slice(0, 20));
+      const resistanceLevel = Math.max(...closes.slice(0, 20));
+      
+      // 最新価格を取得
+      const currentPrice = closes[0];
+      // 価格変化を計算
+      const priceChange = currentPrice - closes[1];
+      
       return {
         symbol: symbol.toUpperCase(),
-        period,
-        trend,
-        strengthScore: Math.round(trendStrength * 100),
-        currentPrice,
-        priceChange,
-        volatility,
-        confidenceLevel,
-        technicalIndicators,
-        supportLevels: [min, min * 0.95],
-        resistanceLevels: [max, max * 1.05],
-        volumeAnalysis: {
-          averageVolume: historyResult.slice(0, 20).reduce((sum, item) => sum + item.volume, 0) / 20,
-          recentVolumeChange: (historyResult[0].volume / (historyResult.slice(0, 5).reduce((sum, item) => sum + item.volume, 0) / 5)) - 1
+        period: period,
+        trend: trend,
+        strengthScore: strengthScore,
+        currentPrice: currentPrice,
+        priceChange: priceChange,
+        volatility: volatility,
+        confidenceLevel: 'medium',
+        technicalIndicators: {
+          sma: {
+            sma20: sma20Values,
+            sma50: sma50Values
+          },
+          ema: {
+            ema12: ema12Values,
+            ema26: ema26Values
+          },
+          macd: {
+            line: macdLine,
+            signal: signalLine,
+            histogram: macdHistogram
+          },
+          rsi: rsi,
+          bollingerBands: {
+            upper: bollingerBands.upper,
+            middle: bollingerBands.middle,
+            lower: bollingerBands.lower,
+            width: (bollingerBands.upper - bollingerBands.lower) / bollingerBands.middle
+          },
+          atr: 0 // 平均真価範囲 (ATR) は現在計算していないのでデフォルト値を設定
         },
-        recommendedAction: trend === 'bullish' ? 'buy' : (trend === 'bearish' ? 'sell' : 'hold')
+        supportLevels: [supportLevel],
+        resistanceLevels: [resistanceLevel],
+        volumeAnalysis: {
+          averageVolume: 0, // 現在計算していないのでデフォルト値を設定
+          recentVolumeChange: 0
+        },
+        recommendedAction: trend === 'bullish' ? 'buy' : trend === 'bearish' ? 'sell' : 'hold'
       };
     } catch (error) {
       logger.error('株価トレンド分析エラー:', error);
@@ -144,6 +195,191 @@ class StockAnalysisService {
         ? error 
         : new InvalidParameterError('株価トレンド分析中にエラーが発生しました');
     }
+  }
+  
+  /**
+   * 単純移動平均(SMA)の配列を計算
+   * @param data 価格データの配列
+   * @param period 期間
+   * @returns 移動平均値の配列
+   */
+  private calculateSMAArray(data: number[], period: number): number[] {
+    if (data.length < period) {
+      return [this.calculateSMA(data, data.length)];
+    }
+    
+    const result: number[] = [];
+    for (let i = 0; i < data.length - period + 1; i++) {
+      const slice = data.slice(i, i + period);
+      result.push(slice.reduce((sum, price) => sum + price, 0) / period);
+    }
+    return result;
+  }
+  
+  /**
+   * 指数移動平均(EMA)の配列を計算
+   * @param data 価格データの配列
+   * @param period 期間
+   * @returns 指数移動平均値の配列
+   */
+  private calculateEMAArray(data: number[], period: number): number[] {
+    if (data.length < period) {
+      return [this.calculateSMA(data, data.length)];
+    }
+    
+    const result: number[] = [];
+    const k = 2 / (period + 1);
+    
+    // 最初のEMAはSMAから計算
+    let ema = this.calculateSMA(data.slice(0, period), period);
+    result.push(ema);
+    
+    // 残りのEMAを計算
+    for (let i = period; i < data.length; i++) {
+      ema = data[i] * k + ema * (1 - k);
+      result.unshift(ema); // 最新の値を配列の先頭に追加
+    }
+    
+    return result;
+  }
+  
+  /**
+   * 単純移動平均(SMA)の計算
+   * @param data 価格データの配列
+   * @param period 期間
+   * @returns 移動平均値
+   */
+  private calculateSMA(data: number[], period: number): number {
+    if (data.length < period) {
+      return data.reduce((sum, value) => sum + value, 0) / data.length;
+    }
+    
+    const latestData = data.slice(0, period);
+    return latestData.reduce((sum, price) => sum + price, 0) / period;
+  }
+  
+  /**
+   * 指数移動平均(EMA)の計算
+   * @param data 価格データの配列
+   * @param period 期間
+   * @returns 指数移動平均値
+   */
+  private calculateEMA(data: number[], period: number): number {
+    if (data.length < period) {
+      return this.calculateSMA(data, data.length);
+    }
+    
+    const k = 2 / (period + 1);
+    let ema = this.calculateSMA(data.slice(0, period), period);
+    
+    for (let i = period; i < data.length; i++) {
+      ema = data[i] * k + ema * (1 - k);
+    }
+    
+    return ema;
+  }
+  
+  /**
+   * 相対力指数(RSI)の計算
+   * @param data 価格データの配列
+   * @param period 期間
+   * @returns RSI値
+   */
+  private calculateRSI(data: number[], period: number): number {
+    if (data.length <= period) {
+      return 50; // 十分なデータがない場合のデフォルト値
+    }
+    
+    let gains = 0;
+    let losses = 0;
+    
+    for (let i = 1; i <= period; i++) {
+      const change = data[i-1] - data[i];
+      if (change >= 0) {
+        gains += change;
+      } else {
+        losses -= change;
+      }
+    }
+    
+    if (losses === 0) return 100;
+    
+    const relativeStrength = gains / losses;
+    return 100 - (100 / (1 + relativeStrength));
+  }
+  
+  /**
+   * ボリンジャーバンドを計算
+   * @param data 価格データ
+   * @param period 期間
+   * @param multiplier 標準偏差の乗数
+   * @returns ボリンジャーバンドのデータ
+   */
+  private calculateBollingerBands(data: number[], period: number, multiplier: number): { 
+    upper: number; 
+    middle: number; 
+    lower: number;
+    standardDeviation: number;
+  } {
+    const middle = this.calculateSMA(data, period);
+    
+    // 標準偏差の計算
+    const squaredDeviations = data.slice(0, period).map(price => Math.pow(price - middle, 2));
+    const variance = squaredDeviations.reduce((sum, deviation) => sum + deviation, 0) / period;
+    const standardDeviation = Math.sqrt(variance);
+    
+    return {
+      upper: middle + (standardDeviation * multiplier),
+      middle,
+      lower: middle - (standardDeviation * multiplier),
+      standardDeviation
+    };
+  }
+  
+  /**
+   * ストキャスティクスの計算
+   * @param highData 高値データの配列
+   * @param lowData 安値データの配列
+   * @param closeData 終値データの配列
+   * @param kPeriod K期間
+   * @param dPeriod D期間
+   * @returns ストキャスティクス
+   */
+  private calculateStochastics(
+    highData: number[], 
+    lowData: number[], 
+    closeData: number[], 
+    kPeriod: number, 
+    dPeriod: number
+  ): { k: number; d: number } {
+    if (closeData.length < kPeriod) {
+      return { k: 50, d: 50 }; // 十分なデータがない場合のデフォルト値
+    }
+    
+    // 最高値と最安値を求める
+    const highestHigh = Math.max(...highData.slice(0, kPeriod));
+    const lowestLow = Math.min(...lowData.slice(0, kPeriod));
+    
+    // %Kの計算
+    const lastClose = closeData[0];
+    const k = ((lastClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+    
+    // 過去のK値を計算（D値の計算用）
+    const kValues = [];
+    for (let i = 0; i < dPeriod; i++) {
+      if (i >= closeData.length) break;
+      
+      const periodHighestHigh = Math.max(...highData.slice(i, i + kPeriod));
+      const periodLowestLow = Math.min(...lowData.slice(i, i + kPeriod));
+      const periodK = ((closeData[i] - periodLowestLow) / (periodHighestHigh - periodLowestLow)) * 100;
+      
+      kValues.push(periodK);
+    }
+    
+    // %Dの計算（%Kの3日間SMA）
+    const d = kValues.reduce((sum, value) => sum + value, 0) / kValues.length;
+    
+    return { k, d };
   }
 
   /**
@@ -174,73 +410,53 @@ class StockAnalysisService {
       if (!historyData.data || historyData.data.length < 30) {
         throw new InvalidParameterError('予測に十分なデータがありません');
       }
+
+      // 分析用データの準備
+      const analysisData = {
+        symbol: symbol,
+        name: stockData.name,
+        currency: stockData.currency,
+        currentPrice: stockData.price,
+        priceHistory: historyData.data.map(item => ({
+          date: item.date,
+          price: item.close,
+          volume: item.volume
+        })),
+        predictionDays: days
+      };
+      
+      // 高度な分析と予測（OpenAI CodeInterpreterを使用）
+      const advancedAnalysis = await this.performAdvancedPrediction(analysisData, days);
       
       // 価格配列とトレンド分析
       const prices = historyData.data.map(item => item.close);
-      const dates = historyData.data.map(item => item.date);
       
       // トレンド分析
       const trendAnalysis = await this.analyzeStockTrend(symbol);
       
-      // 単純な線形予測（実際のアプリケーションではより高度なモデルを使用）
-      const recentPrices = prices.slice(0, Math.min(30, prices.length));
-      const priceChanges = [];
-      
-      for (let i = 1; i < recentPrices.length; i++) {
-        priceChanges.push((recentPrices[i-1] - recentPrices[i]) / recentPrices[i]);
-      }
-      
-      // 平均変化率
-      const avgChange = priceChanges.reduce((sum, change) => sum + change, 0) / priceChanges.length;
-      
-      // ボラティリティ（標準偏差）
-      const varianceSum = priceChanges.reduce((sum, change) => sum + Math.pow(change - avgChange, 2), 0);
-      const volatility = Math.sqrt(varianceSum / priceChanges.length);
-      
-      // 日々の予測値を計算
-      const predictions = [];
-      let predictedPrice = stockData.price;
-      
-      const lastDate = new Date(dates[0]);
-      
-      for (let i = 1; i <= days; i++) {
-        // リスク考慮した変化率
-        const predictedChange = trendAnalysis.trend === 'bullish' 
-          ? avgChange + (Math.random() * volatility)
-          : trendAnalysis.trend === 'bearish'
-            ? avgChange - (Math.random() * volatility)
-            : avgChange + ((Math.random() - 0.5) * volatility);
-        
-        // 予測価格を更新（前日比での予測）
-        predictedPrice = predictedPrice * (1 + predictedChange);
-        
-        // 日付を1日進める
-        const predictionDate = new Date(lastDate);
-        predictionDate.setDate(lastDate.getDate() + i);
-        
-        // 予測範囲
-        const rangeHigh = predictedPrice * (1 + volatility);
-        const rangeLow = predictedPrice * (1 - volatility);
-        
-        predictions.push({
-          date: predictionDate.toISOString().split('T')[0],
-          price: predictedPrice,
-          rangeHigh,
-          rangeLow,
-          confidence: trendAnalysis.trend === 'neutral' ? 'low' : 
-                      trendAnalysis.strengthScore > 70 ? 'high' : 'medium'
-        });
-      }
-      
       return {
         symbol: symbol.toUpperCase(),
         name: stockData.name,
+        currency: stockData.currency,
         currentPrice: stockData.price,
-        predictions,
+        predictions: this.generateBasicPredictions(stockData, historyData.data, days, trendAnalysis),
+        predictedPrices: advancedAnalysis.predictedPrices,
         trend: trendAnalysis.trend,
-        volatility: volatility,
-        method: "混合予測モデル",
-        confidenceScore: trendAnalysis.strengthScore,
+        volatility: trendAnalysis.volatility,
+        method: advancedAnalysis.method || "統計的予測モデル",
+        confidenceScore: advancedAnalysis.confidenceScore || trendAnalysis.strengthScore,
+        predictionFactors: {
+          trend: advancedAnalysis.trend || trendAnalysis.trend,
+          technicalIndicators: advancedAnalysis.technicalIndicators || {
+            rsi: trendAnalysis.technicalIndicators.rsi,
+            macd: trendAnalysis.technicalIndicators.macd
+          },
+          marketConditions: advancedAnalysis.marketConditions || "中立的な市場環境と予測されます",
+          riskAssessment: advancedAnalysis.riskAssessment || {
+            volatilityRisk: trendAnalysis.volatility > 5 ? "高" : "中",
+            downtrend: trendAnalysis.trend === 'bearish' ? "高" : "低"
+          }
+        },
         lastUpdated: new Date().toISOString()
       };
     } catch (error) {
@@ -252,10 +468,149 @@ class StockAnalysisService {
   }
 
   /**
-   * テクニカル分析を行う
-   * @param symbol 株式銘柄コード
+   * OpenAI CodeInterpreterを使用した高度な株価予測
+   * @param analysisData 分析用データ
+   * @param days 予測日数
+   * @returns 高度な予測結果
+   */
+  private async performAdvancedPrediction(analysisData: any, days: number): Promise<any> {
+    try {
+      const systemPrompt = `あなたは高度な株価予測AIアシスタントです。以下のガイドラインに従ってください：
+1. 提供された株価履歴データを分析し、将来の株価を予測してください
+2. Python (pandas, numpy, statsmodels, scikit-learn, matplotlib等)を使用して分析を行ってください
+3. 以下の手法を組み合わせて予測してください：
+   - 時系列分析 (ARIMA/SARIMA)
+   - 指数平滑法 (ETS)
+   - 機械学習アプローチ (回帰分析、ランダムフォレスト等)
+   - テクニカル指標の分析
+4. モデルの性能を評価し、最も精度の高いモデルの結果を優先してください
+5. 予測結果は日付と予測価格のペアの配列として提供してください
+6. 分析結果と予測根拠も示してください`;
+
+      const userPrompt = `以下の株価データを分析し、今後${days}日間の株価を予測してください：
+      
+${JSON.stringify(analysisData, null, 2)}
+
+特に以下のポイントに注目して分析と予測を行ってください：
+1. 価格トレンドの特定と将来の方向性
+2. 主要なテクニカル指標の計算と分析 (SMA, EMA, RSI, MACD等)
+3. ボラティリティの評価
+4. 予測モデルの精度と信頼性
+5. 各日の予測価格
+
+分析結果と予測を以下の構造でJSON形式で出力してください：
+{
+  "predictedPrices": [
+    {"date": "YYYY-MM-DD", "price": number, "range": {"low": number, "high": number}}
+  ],
+  "confidenceScore": number, // 0.0-1.0の範囲
+  "trend": "上昇" | "下降" | "横ばい",
+  "technicalIndicators": {
+    // 計算された指標
+  },
+  "marketConditions": "市場条件の説明",
+  "riskAssessment": {
+    // リスク評価
+  },
+  "method": "使用した予測手法の説明"
+}`;
+
+      // OpenAI CodeInterpreterを使用した分析をリクエスト
+      const result = await dataAnalyzerService.analyzeData(analysisData, userPrompt);
+      
+      // 結果からJSONデータを抽出
+      if (result.structuredData) {
+        logger.info('OpenAI分析による予測結果を取得しました');
+        return result.structuredData;
+      } else {
+        logger.warn('OpenAI分析から構造化データが取得できませんでした');
+        return {}; // 空オブジェクトを返す
+      }
+    } catch (error) {
+      logger.error('高度な株価予測エラー:', error);
+      // エラーが発生した場合は空オブジェクトを返し、基本予測にフォールバック
+      return {};
+    }
+  }
+  
+  /**
+   * 基本予測を生成する
+   */
+  private generateBasicPredictions(
+    stockData: StockData, 
+    historyData: Array<{date: string; close: number}>, 
+    days: number,
+    trendAnalysis: StockTrendAnalysis
+  ): Array<{date: string; price: number; rangeHigh: number; rangeLow: number; confidence: 'high' | 'medium' | 'low'}> {
+    const prices = historyData.map(item => item.close);
+    const dates = historyData.map(item => item.date);
+    
+    // 単純な線形予測（実際のアプリケーションではより高度なモデルを使用）
+    const recentPrices = prices.slice(0, Math.min(30, prices.length));
+    const priceChanges = [];
+    
+    for (let i = 1; i < recentPrices.length; i++) {
+      priceChanges.push((recentPrices[i-1] - recentPrices[i]) / recentPrices[i]);
+    }
+    
+    // 平均変化率
+    const avgChange = priceChanges.reduce((sum, change) => sum + change, 0) / priceChanges.length;
+    
+    // ボラティリティ（標準偏差）
+    const varianceSum = priceChanges.reduce((sum, change) => sum + Math.pow(change - avgChange, 2), 0);
+    const volatility = Math.sqrt(varianceSum / priceChanges.length);
+    
+    // 日々の予測値を計算
+    const predictions: { 
+      date: string; 
+      price: number; 
+      rangeHigh: number; 
+      rangeLow: number; 
+      confidence: "high" | "medium" | "low"; 
+    }[] = [];
+    
+    const today = new Date();
+    
+    for (let i = 1; i <= days; i++) {
+      const predictedDate = new Date(today);
+      predictedDate.setDate(today.getDate() + i);
+      
+      // リスク考慮した変化率
+      const predictedChange = trendAnalysis.trend === 'bullish' 
+        ? avgChange + (Math.random() * volatility)
+        : trendAnalysis.trend === 'bearish'
+          ? avgChange - (Math.random() * volatility)
+          : avgChange + ((Math.random() - 0.5) * volatility);
+      
+      // 予測価格を更新（前日比での予測）
+      const predictedPrice = prices[prices.length - 1] * (1 + predictedChange);
+      
+      // 予測範囲
+      const rangeHigh = predictedPrice * (1 + volatility);
+      const rangeLow = predictedPrice * (1 - volatility);
+      
+      // 信頼度の設定
+      let confidenceLevel: "high" | "medium" | "low" = "medium";
+      if (trendAnalysis.strengthScore > 80) confidenceLevel = "high";
+      else if (trendAnalysis.strengthScore < 40) confidenceLevel = "low";
+      
+      predictions.push({
+        date: predictedDate.toISOString().split('T')[0],
+        price: parseFloat(predictedPrice.toFixed(2)),
+        rangeHigh: parseFloat(rangeHigh.toFixed(2)),
+        rangeLow: parseFloat(rangeLow.toFixed(2)),
+        confidence: confidenceLevel
+      });
+    }
+    
+    return predictions;
+  }
+
+  /**
+   * テクニカル分析を実行する
+   * @param symbol 銘柄コード
    * @param interval 分析間隔
-   * @param indicators 分析する指標のリスト（指定がない場合は全指標）
+   * @param indicators 指標のリスト
    * @returns テクニカル分析結果
    */
   async analyzeTechnical(
@@ -284,26 +639,68 @@ class StockAnalysisService {
       const prices = historyData.data.map(item => item.close);
       const highPrices = historyData.data.map(item => item.high);
       const lowPrices = historyData.data.map(item => item.low);
-      const volumes = historyData.data.map(item => item.volume);
       
-      // 全てのテクニカル指標を計算
-      const sma20 = this.calculateSMA(prices, 20);
-      const sma50 = this.calculateSMA(prices, 50);
-      const sma200 = this.calculateSMA(prices, Math.min(200, prices.length - 1));
+      // テクニカル指標計算用の入力データを準備
+      const inputPrices = [...prices];
+      const inputHigh = [...highPrices];
+      const inputLow = [...lowPrices];
       
-      const ema12 = this.calculateEMA(prices, 12);
-      const ema26 = this.calculateEMA(prices, 26);
+      // 移動平均の計算
+      const sma20 = this.calculateSMA(inputPrices, 20);
+      const sma50 = this.calculateSMA(inputPrices, 50);
+      const sma200 = this.calculateSMA(inputPrices, Math.min(200, inputPrices.length - 1));
       
-      const rsi = this.calculateRSI(prices, 14);
+      // EMA計算
+      const ema12 = this.calculateEMA(inputPrices, 12);
+      const ema26 = this.calculateEMA(inputPrices, 26);
       
-      const macd = this.calculateMACD(prices);
+      // RSI計算
+      const rsi = this.calculateRSI(inputPrices, 14);
       
-      const bollingerBands = this.calculateBollingerBands(prices, 20, 2);
+      // MACD計算
+      const macdResult = this.calculateMACD(
+        inputPrices,
+        12,  // fastPeriod
+        26,  // slowPeriod
+        9    // signalPeriod
+      );
       
-      // ストキャスティクスを計算
-      const stochastic = this.calculateStochastic(highPrices, lowPrices, prices, 14, 3);
+      const macdValue = {
+        MACD: macdResult.line,
+        signal: macdResult.signal,
+        histogram: macdResult.histogram
+      };
       
-      // 分析結果を構築
+      // ボリンジャーバンド計算
+      const bbValue = this.calculateBollingerBands(inputPrices, 20, 2);
+      
+      // ボリンジャーバンド幅を計算
+      const bbWidth = (bbValue.upper - bbValue.lower) / bbValue.middle;
+      
+      // ストキャスティクス計算
+      const stochastic = this.calculateStochastics(
+        inputHigh,
+        inputLow,
+        inputPrices,
+        14,  // period
+        3    // signalPeriod
+      );
+      
+      // トレンド判定
+      let trend: 'bullish' | 'bearish' | 'neutral';
+      if (prices[0] > sma50 && sma50 > sma200) {
+        trend = 'bullish';
+      } else if (prices[0] < sma50 && sma50 < sma200) {
+        trend = 'bearish';
+      } else {
+        trend = 'neutral';
+      }
+      
+      // シグナル生成
+      const signals = this.generateTradingSignals(
+        prices[0], sma50, sma200, rsi, macdValue.histogram, stochastic.k, stochastic.d
+      );
+      
       return {
         symbol: symbol.toUpperCase(),
         name: stockData.name,
@@ -312,10 +709,10 @@ class StockAnalysisService {
         percentChange: stockData.percentChange,
         timeframe: interval,
         timestamp: new Date().toISOString(),
+        tradingSignals: signals,
         analysis: {
-          trend: prices[0] > sma50 && sma50 > sma200 ? 'bullish' : 
-                prices[0] < sma50 && sma50 < sma200 ? 'bearish' : 'neutral',
-          strength: rsi,
+          trend,
+          strength: Math.abs(rsi - 50),
           indicators: {
             movingAverages: {
               sma: {
@@ -330,24 +727,22 @@ class StockAnalysisService {
             },
             rsi,
             macd: {
-              line: macd.line,
-              signal: macd.signal,
-              histogram: macd.histogram
+              line: macdValue.MACD,
+              signal: macdValue.signal,
+              histogram: macdValue.histogram
             },
             bollingerBands: {
-              upper: bollingerBands.upper,
-              middle: bollingerBands.middle,
-              lower: bollingerBands.lower,
-              width: bollingerBands.width
+              upper: bbValue.upper,
+              middle: bbValue.middle,
+              lower: bbValue.lower,
+              width: bbWidth
             },
             stochasticOscillator: {
               k: stochastic.k,
               d: stochastic.d
             }
           },
-          signals: this.generateTradingSignals(
-            prices[0], sma50, sma200, rsi, macd.histogram, stochastic.k, stochastic.d
-          )
+          signals
         }
       };
     } catch (error) {
@@ -359,238 +754,19 @@ class StockAnalysisService {
   }
 
   /**
-   * テクニカル指標を計算する
+   * MACDを計算する
    * @param prices 価格配列
-   * @param historyData 株価履歴データ
-   * @returns テクニカル指標
-   */
-  private calculateTechnicalIndicators(prices: number[], historyData: any[]): any {
-    // SMA計算
-    const sma20 = this.calculateSMA(prices, 20);
-    const sma50 = this.calculateSMA(prices, 50);
-    
-    // EMA計算
-    const ema12 = this.calculateEMA(prices, 12);
-    const ema26 = this.calculateEMA(prices, 26);
-    
-    // RSI計算
-    const rsi = this.calculateRSI(prices, 14);
-    
-    // MACD計算
-    const macd = this.calculateMACD(prices);
-    
-    // ボリンジャーバンド計算
-    const bollingerBands = this.calculateBollingerBands(prices, 20, 2);
-    
-    // ATRを計算（簡略化のためボリンジャーバンドの幅を使用）
-    const atr = bollingerBands.width;
-    
-    return {
-      sma: {
-        sma20: [sma20],
-        sma50: [sma50]
-      },
-      ema: {
-        ema12: [ema12],
-        ema26: [ema26]
-      },
-      rsi,
-      macd: {
-        line: macd.line,
-        signal: macd.signal,
-        histogram: macd.histogram
-      },
-      bollingerBands: {
-        upper: bollingerBands.upper,
-        middle: bollingerBands.middle,
-        lower: bollingerBands.lower,
-        width: bollingerBands.width
-      },
-      atr
-    };
-  }
-
-  /**
-   * トレーディングシグナルを生成
-   */
-  private generateTradingSignals(
-    currentPrice: number, 
-    sma50: number, 
-    sma200: number, 
-    rsi: number, 
-    macdHistogram: number,
-    stochasticK: number,
-    stochasticD: number
-  ): { [key: string]: string } {
-    const signals: { [key: string]: string } = {};
-    
-    // 移動平均シグナル
-    if (currentPrice > sma50 && sma50 > sma200) {
-      signals.movingAverage = 'buy';
-    } else if (currentPrice < sma50 && sma50 < sma200) {
-      signals.movingAverage = 'sell';
-    } else {
-      signals.movingAverage = 'neutral';
-    }
-    
-    // RSIシグナル
-    if (rsi > 70) {
-      signals.rsi = 'overbought';
-    } else if (rsi < 30) {
-      signals.rsi = 'oversold';
-    } else {
-      signals.rsi = 'neutral';
-    }
-    
-    // MACDシグナル
-    if (macdHistogram > 0) {
-      signals.macd = 'bullish';
-    } else {
-      signals.macd = 'bearish';
-    }
-    
-    // ストキャスティクスシグナル
-    if (stochasticK > 80 && stochasticD > 80) {
-      signals.stochastic = 'overbought';
-    } else if (stochasticK < 20 && stochasticD < 20) {
-      signals.stochastic = 'oversold';
-    } else if (stochasticK > stochasticD) {
-      signals.stochastic = 'bullish';
-    } else {
-      signals.stochastic = 'bearish';
-    }
-    
-    // 総合シグナル
-    let bullishSignals = 0;
-    let bearishSignals = 0;
-    
-    if (signals.movingAverage === 'buy') bullishSignals++;
-    if (signals.movingAverage === 'sell') bearishSignals++;
-    
-    if (signals.rsi === 'oversold') bullishSignals++;
-    if (signals.rsi === 'overbought') bearishSignals++;
-    
-    if (signals.macd === 'bullish') bullishSignals++;
-    if (signals.macd === 'bearish') bearishSignals++;
-    
-    if (signals.stochastic === 'oversold') bullishSignals++;
-    if (signals.stochastic === 'overbought') bearishSignals++;
-    
-    if (bullishSignals > bearishSignals) {
-      signals.overall = 'buy';
-    } else if (bearishSignals > bullishSignals) {
-      signals.overall = 'sell';
-    } else {
-      signals.overall = 'neutral';
-    }
-    
-    return signals;
-  }
-
-  /**
-   * 単純移動平均（SMA）を計算
-   * @param prices 価格配列
-   * @param period 期間
-   * @returns SMA値
-   */
-  private calculateSMA(prices: number[], period: number): number {
-    if (prices.length < period) {
-      return prices.reduce((sum, price) => sum + price, 0) / prices.length;
-    }
-    
-    const slice = prices.slice(0, period);
-    return slice.reduce((sum, price) => sum + price, 0) / period;
-  }
-
-  /**
-   * 指数移動平均（EMA）を計算
-   * @param prices 価格配列
-   * @param period 期間
-   * @returns EMA値
-   */
-  private calculateEMA(prices: number[], period: number): number {
-    if (prices.length < period) {
-      return this.calculateSMA(prices, prices.length);
-    }
-
-    const k = 2 / (period + 1);
-    // 最初のEMAはSMAから始める
-    let ema = this.calculateSMA(prices.slice(0, period), period);
-    
-    // 残りの期間についてEMAを計算
-    for (let i = period; i < prices.length; i++) {
-      ema = prices[i] * k + ema * (1 - k);
-    }
-    
-    return ema;
-  }
-
-  /**
-   * 相対力指数（RSI）を計算
-   * @param prices 価格配列
-   * @param period 期間（通常14）
-   * @returns RSI値（0-100）
-   */
-  private calculateRSI(prices: number[], period: number): number {
-    if (prices.length <= period) {
-      return 50; // データが不十分な場合はニュートラル値を返す
-    }
-
-    let gains = 0;
-    let losses = 0;
-
-    // 最初のRS計算のための平均利得と損失を計算
-    for (let i = 1; i <= period; i++) {
-      const change = prices[i - 1] - prices[i];
-      if (change >= 0) {
-        gains += change;
-      } else {
-        losses -= change; // 損失は正の値として記録
-      }
-    }
-
-    let avgGain = gains / period;
-    let avgLoss = losses / period;
-
-    // 残りの価格についてRS値を計算
-    for (let i = period + 1; i < prices.length; i++) {
-      const change = prices[i - 1] - prices[i];
-      if (change >= 0) {
-        avgGain = (avgGain * (period - 1) + change) / period;
-        avgLoss = (avgLoss * (period - 1)) / period;
-      } else {
-        avgGain = (avgGain * (period - 1)) / period;
-        avgLoss = (avgLoss * (period - 1) - change) / period;
-      }
-    }
-
-    // RS値がゼロ（すべての変化が利益の場合）
-    if (avgLoss === 0) {
-      return 100;
-    }
-
-    const rs = avgGain / avgLoss;
-    return 100 - (100 / (1 + rs));
-  }
-
-  /**
-   * MACDを計算
-   * @param prices 価格配列
-   * @param fastPeriod 短期EMA期間（通常12）
-   * @param slowPeriod 長期EMA期間（通常26）
-   * @param signalPeriod シグナル期間（通常9）
-   * @returns MACD値（ライン、シグナル、ヒストグラム）
+   * @param fastPeriod 短期EMA期間
+   * @param slowPeriod 長期EMA期間
+   * @param signalPeriod シグナル期間
+   * @returns MACDの結果
    */
   private calculateMACD(
-    prices: number[],
-    fastPeriod: number = 12, 
-    slowPeriod: number = 26, 
-    signalPeriod: number = 9
+    prices: number[], 
+    fastPeriod = 12, 
+    slowPeriod = 26, 
+    signalPeriod = 9
   ): { line: number; signal: number; histogram: number } {
-    if (prices.length < Math.max(fastPeriod, slowPeriod) + signalPeriod) {
-      return { line: 0, signal: 0, histogram: 0 };
-    }
-
     // 短期・長期EMAを計算
     const fastEMA = this.calculateEMA(prices, fastPeriod);
     const slowEMA = this.calculateEMA(prices, slowPeriod);
@@ -600,113 +776,149 @@ class StockAnalysisService {
     
     // MACDの過去の値を計算してシグナルラインを得る
     const macdValues: number[] = [];
-    for (let i = slowPeriod - 1; i < prices.length; i++) {
-      const fastEMA = this.calculateEMA(prices.slice(0, i + 1), fastPeriod);
-      const slowEMA = this.calculateEMA(prices.slice(0, i + 1), slowPeriod);
-      macdValues.push(fastEMA - slowEMA);
+    for (let i = prices.length - 1; i >= 0; i--) {
+      const slice = prices.slice(i);
+      if (slice.length >= slowPeriod) {
+        const fastEMA = this.calculateEMA(slice, fastPeriod);
+        const slowEMA = this.calculateEMA(slice, slowPeriod);
+        macdValues.unshift(fastEMA - slowEMA);
+        if (macdValues.length >= signalPeriod * 2) break; // 十分なデータが得られたら終了
+      }
     }
     
     // シグナルライン = MACDのEMA
     const signalLine = this.calculateEMA(macdValues, signalPeriod);
     
-    // ヒストグラム = MACD - シグナル
+    // ヒストグラム = MACD - シグナルライン
     const histogram = macdLine - signalLine;
     
     return { line: macdLine, signal: signalLine, histogram };
   }
-
+  
   /**
-   * ボリンジャーバンドを計算
-   * @param prices 価格配列
-   * @param period 期間（通常20）
-   * @param deviation 標準偏差の倍率（通常2）
-   * @returns ボリンジャーバンド（上限、中央、下限、幅）
+   * トレーディングシグナルを生成する
+   * @param currentPrice 現在価格
+   * @param sma50 50日SMA
+   * @param sma200 200日SMA
+   * @param rsi RSI値
+   * @param macdHistogram MACDヒストグラム
+   * @param stochasticK ストキャスティクスK値
+   * @param stochasticD ストキャスティクスD値
+   * @returns トレーディングシグナル
    */
-  private calculateBollingerBands(prices: number[], period: number, deviation: number): {
-    upper: number;
-    middle: number;
-    lower: number;
-    width: number;
-  } {
-    if (prices.length < period) {
-      return {
-        upper: prices[0],
-        middle: prices[0],
-        lower: prices[0],
-        width: 0
-      };
-    }
-
-    const slice = prices.slice(0, period);
-    const middle = this.calculateSMA(slice, period);
-
-    // 標準偏差を計算
-    const squaredDiffs = slice.map(price => Math.pow(price - middle, 2));
-    const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / period;
-    const stdDev = Math.sqrt(variance);
-
-    const upper = middle + (stdDev * deviation);
-    const lower = middle - (stdDev * deviation);
-    const width = (upper - lower) / middle; // 相対的なバンド幅
-
-    return { upper, middle, lower, width };
-  }
-
-  /**
-   * ストキャスティクス・オシレーターを計算
-   * @param highPrices 高値配列
-   * @param lowPrices 安値配列
-   * @param closePrices 終値配列
-   * @param kPeriod K期間（通常14）
-   * @param dPeriod D期間（通常3）
-   * @returns ストキャスティクス（%K、%D）
-   */
-  private calculateStochastic(
-    highPrices: number[],
-    lowPrices: number[],
-    closePrices: number[],
-    kPeriod: number = 14,
-    dPeriod: number = 3
-  ): { k: number; d: number } {
-    if (highPrices.length < kPeriod || lowPrices.length < kPeriod || closePrices.length < kPeriod) {
-      return { k: 50, d: 50 }; // データが不十分な場合はニュートラル値を返す
-    }
-
-    // 最新のKを計算
-    const highestHigh = Math.max(...highPrices.slice(0, kPeriod));
-    const lowestLow = Math.min(...lowPrices.slice(0, kPeriod));
-    const currentClose = closePrices[0];
+  private generateTradingSignals(
+    currentPrice: number,
+    sma50: number,
+    sma200: number,
+    rsi: number,
+    macdHistogram: number,
+    stochasticK: number,
+    stochasticD: number
+  ): { overall: string; [key: string]: string } {
+    const signals: { signal: string; strength: number; description: string }[] = [];
     
-    // %K = (現在の終値 - 期間内の最安値) / (期間内の最高値 - 期間内の最安値) * 100
-    const k = (highestHigh - lowestLow) === 0 ? 50 : ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
-    
-    // 過去のK値を計算してDを得る
-    const kValues: number[] = [];
-    
-    for (let i = 0; i < Math.min(dPeriod, highPrices.length - kPeriod); i++) {
-      const periodHighestHigh = Math.max(...highPrices.slice(i, i + kPeriod));
-      const periodLowestLow = Math.min(...lowPrices.slice(i, i + kPeriod));
-      const periodCurrentClose = closePrices[i];
-      
-      const periodK = (periodHighestHigh - periodLowestLow) === 0 ? 50 : 
-                      ((periodCurrentClose - periodLowestLow) / (periodHighestHigh - periodLowestLow)) * 100;
-      
-      kValues.push(periodK);
+    // 移動平均シグナル
+    if (currentPrice > sma50 && sma50 > sma200) {
+      signals.push({
+        signal: 'buy',
+        strength: 0.7,
+        description: '上昇トレンド: 価格が50日・200日SMAを上回っています'
+      });
+    } else if (currentPrice < sma50 && sma50 < sma200) {
+      signals.push({
+        signal: 'sell',
+        strength: 0.7,
+        description: '下降トレンド: 価格が50日・200日SMAを下回っています'
+      });
     }
     
-    // %D = %Kの単純移動平均（通常3日間）
-    const d = kValues.length === 0 ? k : kValues.reduce((sum, kVal) => sum + kVal, 0) / kValues.length;
+    // ゴールデンクロス/デッドクロス
+    if (sma50 > sma200 && Math.abs(sma50 - sma200) / sma200 < 0.02) {
+      signals.push({
+        signal: 'buy',
+        strength: 0.8,
+        description: 'ゴールデンクロス: 50日SMAが200日SMAを上抜けました'
+      });
+    } else if (sma50 < sma200 && Math.abs(sma50 - sma200) / sma200 < 0.02) {
+      signals.push({
+        signal: 'sell',
+        strength: 0.8,
+        description: 'デッドクロス: 50日SMAが200日SMAを下抜けました'
+      });
+    }
     
-    return { k, d };
+    // RSIシグナル
+    if (rsi < 30) {
+      signals.push({
+        signal: 'buy',
+        strength: 0.6,
+        description: '売られすぎ: RSIが30を下回っています'
+      });
+    } else if (rsi > 70) {
+      signals.push({
+        signal: 'sell',
+        strength: 0.6,
+        description: '買われすぎ: RSIが70を上回っています'
+      });
+    }
+    
+    // MACDシグナル
+    if (macdHistogram > 0) {
+      signals.push({
+        signal: 'buy',
+        strength: 0.65,
+        description: 'MACDシグナル: ヒストグラムがプラス圏です'
+      });
+    } else if (macdHistogram < 0) {
+      signals.push({
+        signal: 'sell',
+        strength: 0.65,
+        description: 'MACDシグナル: ヒストグラムがマイナス圏です'
+      });
+    }
+    
+    // ストキャスティクスシグナル
+    if (stochasticK < 20 && stochasticD < 20 && stochasticK > stochasticD) {
+      signals.push({
+        signal: 'buy',
+        strength: 0.6,
+        description: 'ストキャスティクス: 売られすぎ圏からの上昇シグナル'
+      });
+    } else if (stochasticK > 80 && stochasticD > 80 && stochasticK < stochasticD) {
+      signals.push({
+        signal: 'sell',
+        strength: 0.6,
+        description: 'ストキャスティクス: 買われすぎ圏からの下降シグナル'
+      });
+    }
+    
+    // シグナルを集計して返却形式に変換
+    let buyCount = 0;
+    let sellCount = 0;
+    
+    const result: { overall: string; [key: string]: string } = { overall: '' };
+    
+    signals.forEach((signal, index) => {
+      result[`signal${index + 1}`] = `${signal.signal}: ${signal.description}`;
+      if (signal.signal === 'buy') buyCount++;
+      if (signal.signal === 'sell') sellCount++;
+    });
+    
+    // 総合判断を追加
+    let overall: string;
+    if (buyCount > sellCount) {
+      overall = 'buy';
+    } else if (sellCount > buyCount) {
+      overall = 'sell';
+    } else {
+      overall = 'neutral';
+    }
+    
+    result.overall = overall;
+    
+    return result;
   }
 }
 
 // シングルトンとしてインスタンスをエクスポート
-export const stockAnalysisService = new StockAnalysisService();
-
-// 型検証用のスキーマもエクスポート
-export { 
-  trendAnalysisSchema,
-  stockPredictionSchema,
-  technicalAnalysisSchema
-}; 
+export const stockAnalysisService = new StockAnalysisService(); 

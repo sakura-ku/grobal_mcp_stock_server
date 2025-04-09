@@ -323,17 +323,37 @@ export interface StockPrediction {
   symbol: string;
   name: string;
   currentPrice: number;
-  predictions: Array<{
+  currency?: string;
+  predictedPrices?: Array<{
+    date: string;
+    price: number;
+    range: {
+      low: number;
+      high: number;
+    };
+  }>;
+  predictions?: Array<{
     date: string;
     price: number;
     rangeHigh: number;
     rangeLow: number;
     confidence: 'high' | 'medium' | 'low';
   }>;
-  trend: 'bullish' | 'bearish' | 'neutral';
-  volatility: number;
-  method: string;
-  confidenceScore: number;
+  trend?: 'bullish' | 'bearish' | 'neutral';
+  volatility?: number;
+  method?: string;
+  confidenceScore?: number;
+  predictionFactors?: {
+    trend?: 'bullish' | 'bearish' | 'neutral';
+    technicalIndicators?: any;
+    marketConditions?: string;
+    riskAssessment?: {
+      volatilityRisk?: string;
+      downtrend?: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
   lastUpdated: string;
 }
 
@@ -346,6 +366,11 @@ export interface TechnicalAnalysisResult {
   percentChange: number;
   timeframe: 'daily' | 'weekly' | 'monthly';
   timestamp: string;
+  trend?: 'bullish' | 'bearish' | 'neutral';
+  tradingSignals?: {
+    overall: string;
+    [key: string]: string;
+  };
   analysis: {
     trend: 'bullish' | 'bearish' | 'neutral';
     strength: number;
