@@ -23,7 +23,9 @@
     /* 型定義ファイルの解決を改善 */
     "resolveJsonModule": true,
     /* パッケージではpackage.jsonのexportsフィールドを優先して解決 */
-    "resolvePackageJsonExports": true
+    "resolvePackageJsonExports": true,
+    /* ts-jest用に分離モジュールを有効化 */
+    "isolatedModules": true
   },
   /* コンパイル対象のファイルパターン */
   "include": ["src/**/*"],
