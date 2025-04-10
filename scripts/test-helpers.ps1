@@ -69,7 +69,7 @@ function Reset-TestDatabase {
     param (
         [string]$DbName = "test_db",
         [string]$DbUser = "postgres",
-        [string]$DbPassword = "postgres",
+        [SecureString]$DbPassword = (ConvertTo-SecureString "postgres" -AsPlainText -Force),
         [string]$DbHost = "localhost",
         [int]$DbPort = 5432
     )
@@ -83,7 +83,8 @@ function Reset-TestDatabase {
             $regex = "postgres://(.*?):(.*?)@(.*?):(\d+)/(.*)"
             if ($env:DATABASE_URL -match $regex) {
                 $DbUser = $matches[1]
-                $DbPassword = $matches[2]
+                # 環境変数から取得したパスワードをSecureStringに変換
+                $DbPassword = ConvertTo-SecureString $matches[2] -AsPlainText -Force
                 $DbHost = $matches[3]
                 $DbPort = $matches[4]
                 $DbName = $matches[5]
@@ -91,7 +92,11 @@ function Reset-TestDatabase {
         }
 
         # PostgreSQLコマンドを実行
-        $env:PGPASSWORD = $DbPassword
+        $env:PGPASSWORD = if ($DbPassword) { 
+            (New-Object PSCredential "user", $DbPassword).GetNetworkCredential().Password 
+        } else { 
+            "postgres" 
+        }
         
         # データベースを再作成
         Invoke-Expression "psql -h $DbHost -p $DbPort -U $DbUser -c 'DROP DATABASE IF EXISTS $DbName;'"
