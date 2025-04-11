@@ -11,9 +11,9 @@ import type {
   SearchResult,
   PortfolioPerformance
 } from '../types/stock.js';
-import yahooFinance from 'yahoo-finance2';
 import config from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import polygonClient from '../utils/polygonClient.js';
 
 // パラメータのバリデーションスキーマ
 export const stockSymbolSchema = z.object({
@@ -40,16 +40,30 @@ export const portfolioSchema = z.object({
   ).min(1)
 });
 
+// Polygon.ioクライアントはutils/polygonClient.jsから共通化されたものを使用
+
 /**
  * yahoo-finance2のインターバルを内部形式に変換
  */
-function convertInterval(interval: string): '1d' | '1wk' | '1mo' {
+function convertInterval(interval: string): 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year' {
   switch(interval) {
-    case 'daily': return '1d';
-    case 'weekly': return '1wk';
-    case 'monthly': return '1mo';
-    default: return '1d';
+    case 'daily': return 'day';
+    case 'weekly': return 'week';
+    case 'monthly': return 'month';
+    default: return 'day';
   }
+}
+
+/**
+ * 日付文字列をフォーマットする
+ * @param date 日付オブジェクト
+ * @returns YYYY-MM-DD形式の日付文字列
+ */
+function formatDate(date: Date | null | undefined): string {
+  if (!date || !(date instanceof Date)) {
+    return new Date().toISOString().split('T')[0];
+  }
+  return date.toISOString().split('T')[0];
 }
 
 /**
@@ -57,11 +71,9 @@ function convertInterval(interval: string): '1d' | '1wk' | '1mo' {
  */
 class StockService {
   private readonly apiUrl: string;
-  private readonly apiTimeout: number;
-  
+
   constructor() {
-    this.apiUrl = config.api.stockApiUrl;
-    this.apiTimeout = config.api.timeout;
+    this.apiUrl = config.api.stockApiUrl || 'http://localhost:3000/api/stock';
   }
 
   /**
@@ -76,20 +88,24 @@ class StockService {
 
     try {
       logger.info(`株価情報取得開始: ${symbol}`);
-      // yahoo-finance2を使用して実際のデータを取得
-      const quote = await yahooFinance.quote(symbol);
       
-      const timestamp = typeof quote.regularMarketTime === 'number' 
-        ? quote.regularMarketTime 
-        : 0;
+      // Polygon.ioを使用して前日終値を取得
+      const quote = await polygonClient.stocks.previousClose(symbol);
+      
+      if (!quote.results || quote.results.length === 0) {
+        throw new InvalidParameterError('株価データが取得できませんでした');
+      }
+      
+      const latestResult = quote.results[0];
+      
       return {
         symbol: symbol.toUpperCase(),
-        name: quote.shortName || quote.longName || `${symbol.toUpperCase()} Corporation`,
-        price: quote.regularMarketPrice || 0,
-        change: quote.regularMarketChange || 0,
-        percentChange: quote.regularMarketChangePercent || 0,
-        currency: quote.currency || 'USD',
-        lastUpdated: new Date(timestamp * 1000).toISOString(),
+        name: symbol.toUpperCase(), // Polygon.ioは会社名を返さないため、銘柄コードをそのまま使用
+        price: latestResult?.c || 0, // 終値
+        change: (latestResult?.c || 0) - (latestResult?.o || 0), // 前日終値 - 始値
+        percentChange: latestResult?.o ? ((latestResult?.c || 0) - latestResult?.o) / latestResult.o * 100 : 0,
+        currency: 'USD', // Polygon.ioはデフォルトでUSDを使用
+        lastUpdated: new Date().toISOString(),
       };
     } catch (error) {
       logger.error('株価取得エラー:', error);
@@ -141,44 +157,68 @@ class StockService {
     try {
       logger.info(`株価履歴取得開始: ${symbol}, インターバル: ${interval}, 期間: ${range}`);
       
-      const yahooInterval = convertInterval(interval);
-      const period2 = new Date();
-      
-      // 期間に基づいて期間開始日を設定
-      let period1: Date;
+      const polygonInterval = convertInterval(interval);
+      const multiplier = 1; // インターバルの乗数
       const now = new Date();
       
+      // 期間に基づいて期間開始日を設定
+      let fromDate: Date;
+      
       switch(range) {
-        case '1d': period1 = new Date(now.setDate(now.getDate() - 1)); break;
-        case '5d': period1 = new Date(now.setDate(now.getDate() - 5)); break;
-        case '1mo': period1 = new Date(now.setMonth(now.getMonth() - 1)); break;
-        case '3mo': period1 = new Date(now.setMonth(now.getMonth() - 3)); break;
-        case '6mo': period1 = new Date(now.setMonth(now.getMonth() - 6)); break;
-        case '1y': period1 = new Date(now.setFullYear(now.getFullYear() - 1)); break;
-        case '2y': period1 = new Date(now.setFullYear(now.getFullYear() - 2)); break;
-        case '5y': period1 = new Date(now.setFullYear(now.getFullYear() - 5)); break;
-        case '10y': period1 = new Date(now.setFullYear(now.getFullYear() - 10)); break;
-        case 'max': period1 = new Date(1970, 0, 1); break;
-        default: period1 = new Date(now.setMonth(now.getMonth() - 1));
+        case '1d': fromDate = new Date(now.setDate(now.getDate() - 1)); break;
+        case '5d': fromDate = new Date(now.setDate(now.getDate() - 5)); break;
+        case '1mo': fromDate = new Date(now.setMonth(now.getMonth() - 1)); break;
+        case '3mo': fromDate = new Date(now.setMonth(now.getMonth() - 3)); break;
+        case '6mo': fromDate = new Date(now.setMonth(now.getMonth() - 6)); break;
+        case '1y': fromDate = new Date(now.setFullYear(now.getFullYear() - 1)); break;
+        case '2y': fromDate = new Date(now.setFullYear(now.getFullYear() - 2)); break;
+        case '5y': fromDate = new Date(now.setFullYear(now.getFullYear() - 5)); break;
+        case '10y': fromDate = new Date(now.setFullYear(now.getFullYear() - 10)); break;
+        case 'max': fromDate = new Date(now.setFullYear(now.getFullYear() - 20)); break;
+        default: fromDate = new Date(now.setMonth(now.getMonth() - 1));
       }
       
-      const historyResult = await yahooFinance.historical(symbol, {
-        period1,
-        period2,
-        interval: yahooInterval
+      const toDate = new Date();
+      
+      // @ts-ignore - Polygon.ioのAPIの型定義の問題
+      const historyResult = await polygonClient.stocks.aggregates(
+        symbol,
+        multiplier,
+        polygonInterval,
+        formatDate(fromDate),
+        formatDate(toDate)
+      );
+      
+      if (!historyResult.results) {
+        throw new InvalidParameterError('履歴データが取得できませんでした');
+      }
+      
+      // データをAPI形式に変換
+      const data = historyResult.results.map(result => {
+        // タイムスタンプのnull/undefined対策
+        let dateStr: string;
+        try {
+          // タイムスタンプがある場合はそれを使用
+          dateStr = new Date(result.t || Date.now()).toISOString().split('T')[0];
+        } catch (error) {
+          // パースエラーの場合は現在日時を使用
+          dateStr = new Date().toISOString().split('T')[0];
+        }
+        
+        return {
+          date: dateStr,
+          open: result.o || 0,
+          high: result.h || 0,
+          low: result.l || 0,
+          close: result.c || 0,
+          volume: result.v || 0
+        };
       });
       
       return {
         symbol: symbol.toUpperCase(),
         interval,
-        data: historyResult.map(item => ({
-          date: item.date.toISOString(),
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
-          volume: item.volume
-        }))
+        data: data.reverse() // 新しい日付順に並び替え
       };
     } catch (error) {
       logger.error('株価履歴取得エラー:', error);
@@ -204,79 +244,27 @@ class StockService {
     
     try {
       logger.info(`株式詳細情報取得開始: ${symbol}`);
-      const result = await yahooFinance.quoteSummary(symbol, {
-        modules: ['financialData', 'price', 'summaryDetail']
-      });
+      
+      // Polygon.ioからの株価データ
+      const tickerDetails = await polygonClient.reference.tickerDetails(symbol);
+      const quote = await polygonClient.stocks.previousClose(symbol);
       
       // APIデータを型安全に扱う
-      const financialData: Partial<FinancialData> = {};
-      const priceData: Partial<PriceData> = {};
-      const summaryDetail: Partial<SummaryDetailData> = {};
+      const financialData: Partial<FinancialData> = {
+        currentPrice: quote.results && quote.results[0] ? quote.results[0].c : 0,
+        financialCurrency: 'USD'
+      };
       
-      // financialDataのコピー
-      if (result.financialData) {
-        const fd = result.financialData;
-        
-        // 安全に型変換してコピー
-        if (typeof fd.currentPrice === 'number') financialData.currentPrice = fd.currentPrice;
-        if (typeof fd.targetHighPrice === 'number') financialData.targetHighPrice = fd.targetHighPrice;
-        if (typeof fd.targetLowPrice === 'number') financialData.targetLowPrice = fd.targetLowPrice;
-        if (typeof fd.targetMeanPrice === 'number') financialData.targetMeanPrice = fd.targetMeanPrice;
-        if (typeof fd.recommendationMean === 'number') financialData.recommendationMean = fd.recommendationMean;
-        if (typeof fd.recommendationKey === 'string') financialData.recommendationKey = fd.recommendationKey;
-        if (typeof fd.numberOfAnalystOpinions === 'number') financialData.numberOfAnalystOpinions = fd.numberOfAnalystOpinions;
-        if (typeof fd.totalCash === 'number') financialData.totalCash = fd.totalCash;
-        if (typeof fd.totalDebt === 'number') financialData.totalDebt = fd.totalDebt;
-        if (typeof fd.quickRatio === 'number') financialData.quickRatio = fd.quickRatio;
-        if (typeof fd.currentRatio === 'number') financialData.currentRatio = fd.currentRatio;
-        if (typeof fd.totalRevenue === 'number') financialData.totalRevenue = fd.totalRevenue;
-        if (typeof fd.returnOnAssets === 'number') financialData.returnOnAssets = fd.returnOnAssets;
-        if (typeof fd.returnOnEquity === 'number') financialData.returnOnEquity = fd.returnOnEquity;
-        if (typeof fd.grossProfits === 'number') financialData.grossProfits = fd.grossProfits;
-        if (typeof fd.operatingCashflow === 'number') financialData.operatingCashflow = fd.operatingCashflow;
-        if (typeof fd.revenueGrowth === 'number') financialData.revenueGrowth = fd.revenueGrowth;
-        if (typeof fd.operatingMargins === 'number') financialData.operatingMargins = fd.operatingMargins;
-        if (typeof fd.profitMargins === 'number') financialData.profitMargins = fd.profitMargins;
-        if (typeof fd.financialCurrency === 'string') financialData.financialCurrency = fd.financialCurrency;
-      }
+      const priceData: Partial<PriceData> = {
+        longName: tickerDetails.results?.name || symbol,
+        shortName: symbol,
+        currency: 'USD'
+      };
       
-      // priceDataのコピー
-      if (result.price) {
-        const pd = result.price;
-        
-        if (typeof pd.regularMarketPrice === 'number') priceData.regularMarketPrice = pd.regularMarketPrice;
-        if (typeof pd.regularMarketChange === 'number') priceData.regularMarketChange = pd.regularMarketChange;
-        if (typeof pd.regularMarketChangePercent === 'number') priceData.regularMarketChangePercent = pd.regularMarketChangePercent;
-        if (typeof pd.marketCap === 'number') priceData.marketCap = pd.marketCap;
-        if (typeof pd.currency === 'string') priceData.currency = pd.currency;
-        if (typeof pd.exchange === 'string') priceData.exchange = pd.exchange;
-        if (typeof pd.exchangeName === 'string') priceData.exchangeName = pd.exchangeName;
-        if (typeof pd.marketState === 'string') priceData.marketState = pd.marketState;
-        if (typeof pd.symbol === 'string') priceData.symbol = pd.symbol;
-        if (typeof pd.shortName === 'string') priceData.shortName = pd.shortName;
-        if (typeof pd.longName === 'string') priceData.longName = pd.longName;
-      }
-      
-      // summaryDataのコピー
-      if (result.summaryDetail) {
-        const sd = result.summaryDetail;
-        
-        if (typeof sd.previousClose === 'number') summaryDetail.previousClose = sd.previousClose;
-        if (typeof sd.open === 'number') summaryDetail.open = sd.open;
-        if (typeof sd.dayLow === 'number') summaryDetail.dayLow = sd.dayLow;
-        if (typeof sd.dayHigh === 'number') summaryDetail.dayHigh = sd.dayHigh;
-        if (typeof sd.regularMarketVolume === 'number') summaryDetail.regularMarketVolume = sd.regularMarketVolume;
-        if (typeof sd.volume === 'number') summaryDetail.volume = sd.volume;
-        if (typeof sd.averageVolume === 'number') summaryDetail.averageVolume = sd.averageVolume;
-        if (typeof sd.marketCap === 'number') summaryDetail.marketCap = sd.marketCap;
-        if (typeof sd.beta === 'number') summaryDetail.beta = sd.beta;
-        if (typeof sd.trailingPE === 'number') summaryDetail.trailingPE = sd.trailingPE;
-        if (typeof sd.forwardPE === 'number') summaryDetail.forwardPE = sd.forwardPE;
-        if (typeof sd.dividendRate === 'number') summaryDetail.dividendRate = sd.dividendRate;
-        if (typeof sd.dividendYield === 'number') summaryDetail.dividendYield = sd.dividendYield;
-        if (typeof sd.fiveYearAvgDividendYield === 'number') summaryDetail.fiveYearAvgDividendYield = sd.fiveYearAvgDividendYield;
-        if (typeof sd.currency === 'string') summaryDetail.currency = sd.currency;
-      }
+      const summaryDetail: Partial<SummaryDetailData> = {
+        marketCap: tickerDetails.results?.market_cap || 0,
+        currency: 'USD'
+      };
       
       return {
         financialData,
@@ -334,15 +322,15 @@ class StockService {
       const atr = bollingerBands.width;
       
       // トレンド判定
-      let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      let trend: 'up' | 'down' | 'neutral' = 'neutral';
       let strengthScore = 50; // 0-100のスケール
       
       // 単純なトレンド判定ロジック
       if (prices[0] > sma50 && sma50 > sma200 && macd.histogram > 0 && rsi > 50) {
-        trend = 'bullish';
+        trend = 'up';
         strengthScore = Math.min(100, 50 + ((rsi - 50) * 1.5));
       } else if (prices[0] < sma50 && sma50 < sma200 && macd.histogram < 0 && rsi < 50) {
-        trend = 'bearish';
+        trend = 'down';
         strengthScore = Math.max(0, 50 - ((50 - rsi) * 1.5));
       }
       
@@ -368,9 +356,9 @@ class StockService {
       
       // 推奨アクション
       let recommendedAction: 'buy' | 'sell' | 'hold' = 'hold';
-      if (trend === 'bullish' && strengthScore > 70) {
+      if (trend === 'up' && strengthScore > 70) {
         recommendedAction = 'buy';
-      } else if (trend === 'bearish' && strengthScore < 30) {
+      } else if (trend === 'down' && strengthScore < 30) {
         recommendedAction = 'sell';
       }
       
@@ -452,23 +440,35 @@ class StockService {
     
     try {
       logger.info(`株式検索開始: ${query}`);
-      const results = await yahooFinance.search(query);
-      return results.quotes.map(quote => {
-        const quoteAny = quote as any;
-        return {
-          exchange: quoteAny.exchange || '',
-          shortname: quoteAny.shortname || '',
-          quoteType: quoteAny.quoteType || '',
-          symbol: quoteAny.symbol || '',
-          index: quoteAny.index || '',
-          score: quoteAny.score || 0,
-          typeDisp: quoteAny.typeDisp || '',
-          longname: quoteAny.longname || '',
-          isYahooFinance: Boolean(quoteAny.isYahooFinance),
-          sector: quoteAny.sector,
-          industry: quoteAny.industry
-        };
+      
+      const tickerSearch = await polygonClient.reference.tickers({
+        search: query,
+        active: 'true',
+        sort: 'ticker',
+        order: 'asc',
+        limit: 10
       });
+      
+      if (!tickerSearch.results) {
+        return [];
+      }
+      
+      const searchResults = tickerSearch.results?.map(ticker => ({
+        exchange: ticker.primary_exchange || '',
+        shortname: ticker.name || '',
+        quoteType: 'EQUITY',
+        symbol: ticker.ticker || '',
+        index: '',
+        score: 0,
+        typeDisp: ticker.type || '',
+        longname: ticker.name || '',
+        isYahooFinance: false,
+        // @ts-ignore - Polygon.ioのAPI応答にある実際のプロパティ
+        sector: ticker.sic_description || ticker.market || '',
+        industry: ticker.market || ''
+      }) as SearchResult) || [];
+      
+      return searchResults;
     } catch (error) {
       logger.error('株式検索エラー:', error);
       throw error instanceof Error
@@ -496,9 +496,7 @@ class StockService {
       
       // 詳細データを並行して取得（セクター情報などのため）
       const detailsPromises = symbols.map(symbol => 
-        yahooFinance.quoteSummary(symbol, {
-          modules: ['assetProfile', 'defaultKeyStatistics', 'price']
-        }).catch(() => ({}))
+        polygonClient.reference.tickerDetails(symbol).catch(() => ({}))
       );
       const detailsResults = await Promise.all(detailsPromises);
       
@@ -554,7 +552,7 @@ class StockService {
       
       // リスクメトリクスの計算（簡易版）
       // ここでは実際のデータからボラティリティとベータを計算するのは複雑なので、
-      // 利用可能な場合はYahoo Financeから取得した値を使用
+      // 利用可能な場合はPolygon.ioから取得した値を使用
       const riskMetrics = {
         volatility: 0,
         beta: 0,
@@ -855,32 +853,56 @@ class StockService {
       startDate.setDate(startDate.getDate() - period);
       
       // 株価履歴データを取得
-      const historyResult = await yahooFinance.historical(symbol, {
-        period1: startDate,
-        period2: endDate,
-        interval: '1d'
-      });
+      // @ts-ignore - Polygon.ioのAPIの型定義問題
+      const historyResult = await polygonClient.stocks.aggregates(
+        symbol,
+        1,
+        convertInterval(interval),
+        formatDate(startDate),
+        formatDate(endDate)
+      );
       
-      // 履歴データが少なすぎる場合はエラー
-      if (historyResult.length < 5) {
-        throw new InvalidParameterError(`十分な履歴データがありません（${historyResult.length}件）`);
+      // 結果がない場合は例外
+      if (!historyResult.results || historyResult.results.length === 0) {
+        throw new InvalidParameterError('株価履歴データが取得できませんでした');
       }
       
+      // 値の安全な取得
+      const results = historyResult.results || [];
+      
+      // 株価データを安全に抽出（undefined/nullの場合は0を使用）
+      const data = results.map(item => {
+        // タイプガードを追加
+        if (!item) return 0;
+        return typeof item.c === 'number' ? item.c : 0;
+      });
+      
+      // 出来高データを安全に抽出
+      const volumes = results.map(item => {
+        if (!item) return 0;
+        return typeof item.v === 'number' ? item.v : 0;
+      });
+      
       // 最新の株価情報を取得
-      const latestQuote = await yahooFinance.quote(symbol);
-      const currentPrice = latestQuote.regularMarketPrice || 0;
-      const priceChange = latestQuote.regularMarketChange || 0;
+      const latestQuote = await polygonClient.stocks.previousClose(symbol);
+      const recentPrice = latestQuote.results?.[0]?.c || 0;
+      
+      // 価格変動の計算 (最新価格と最初の価格を比較)
+      const firstPrice = results[0]?.c || 0;
+      const lastPrice = results[results.length - 1]?.c || 0;
+      const priceChange = lastPrice - firstPrice;
+      const percentChange = firstPrice !== 0 ? (priceChange / firstPrice) * 100 : 0;
       
       // ここでトレンド分析のロジックを適用
       // 簡単な例: 過去5日間の平均と現在価格を比較
-      const recentAverage = historyResult.slice(0, 5).reduce((sum, item) => sum + item.close, 0) / 5;
+      const recentAverage = data.slice(0, 5).reduce((sum, price) => sum + price, 0) / 5;
       
       // トレンド強度を計算 (-1.0 to 1.0の範囲)
       let trendStrength = 0;
-      if (historyResult.length > 10) {
+      if (data.length > 10) {
         // 10日間の価格変化率をベースに強度を計算
-        const oldPrice = historyResult[10].close;
-        const newPrice = historyResult[0].close;
+        const oldPrice = data[10];
+        const newPrice = data[0];
         trendStrength = (newPrice - oldPrice) / oldPrice;
         
         // -1.0 から 1.0 の範囲に収める
@@ -888,22 +910,21 @@ class StockService {
       }
       
       // トレンド方向を判定
-      let trend: 'bullish' | 'bearish' | 'neutral';
-      if (trendStrength > 0.05) {
-        trend = 'bullish';
-      } else if (trendStrength < -0.05) {
-        trend = 'bearish';
+      let trend: 'up' | 'down' | 'neutral';
+      if (trendStrength > 0.02) {
+        trend = 'up';
+      } else if (trendStrength < -0.02) {
+        trend = 'down';
       } else {
         trend = 'neutral';
       }
       
       // ボラティリティを計算
-      const prices = historyResult.map(item => item.close);
-      const sumSquares = prices.reduce((sum, price) => {
+      const sumSquares = data.reduce((sum, price) => {
         const diff = price - recentAverage;
         return sum + diff * diff;
       }, 0);
-      const volatility = Math.sqrt(sumSquares / prices.length);
+      const volatility = Math.sqrt(sumSquares / data.length);
       
       // 信頼度を決定
       let confidenceLevel: 'high' | 'medium' | 'low' = 'medium';
@@ -914,12 +935,12 @@ class StockService {
       }
       
       // テクニカル指標を計算
-      const sma20 = prices.slice(0, 20).reduce((a, b) => a + b, 0) / 20;
-      const sma50 = prices.slice(0, 50).reduce((a, b) => a + b, 0) / 50;
+      const sma20 = data.slice(0, 20).reduce((a, b) => a + b, 0) / 20;
+      const sma50 = data.slice(0, 50).reduce((a, b) => a + b, 0) / 50;
       
       // サポートとレジスタンスレベルを決定
-      const min = Math.min(...prices.slice(0, 20));
-      const max = Math.max(...prices.slice(0, 20));
+      const min = Math.min(...data.slice(0, 20));
+      const max = Math.max(...data.slice(0, 20));
       
       // 分析結果を返す
       return {
@@ -927,8 +948,9 @@ class StockService {
         period,
         trend,
         strengthScore: parseFloat(trendStrength.toFixed(2)),
-        currentPrice,
+        currentPrice: recentPrice,
         priceChange,
+        percentChange,
         volatility,
         confidenceLevel,
         technicalIndicators: {
@@ -957,10 +979,10 @@ class StockService {
         supportLevels: [min, min * 0.95],
         resistanceLevels: [max, max * 1.05],
         volumeAnalysis: {
-          averageVolume: historyResult.slice(0, 20).reduce((sum, item) => sum + item.volume, 0) / 20,
+          averageVolume: volumes.slice(0, 20).reduce((sum, volume) => sum + volume, 0) / 20,
           recentVolumeChange: 0 // 簡易実装のため仮の値
         },
-        recommendedAction: trend === 'bullish' ? 'buy' : (trend === 'bearish' ? 'sell' : 'hold')
+        recommendedAction: trend === 'up' ? 'buy' : (trend === 'down' ? 'sell' : 'hold')
       };
     } catch (error) {
       logger.error('株価トレンド分析エラー:', error);
@@ -972,4 +994,5 @@ class StockService {
 }
 
 // シングルトンインスタンスとしてエクスポート
-export const stockService = new StockService(); 
+export const stockService = new StockService();
+export default stockService; 

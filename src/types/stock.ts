@@ -244,10 +244,11 @@ export interface HistoricalStockData {
 export interface StockTrendAnalysis {
   symbol: string;
   period: number;
-  trend: 'bullish' | 'bearish' | 'neutral';
+  trend: 'up' | 'down' | 'neutral';
   strengthScore: number;
   currentPrice: number;
   priceChange: number;
+  percentChange?: number;
   volatility: number;
   confidenceLevel: 'high' | 'medium' | 'low';
   technicalIndicators: {
