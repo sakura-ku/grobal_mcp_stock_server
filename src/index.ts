@@ -152,6 +152,32 @@ export async function startServer(port: number = config.server.port, host: strin
     // MCPサーバーの初期化
     const mcpServer = await setupMcpServer();
     
+    // MCPツール一覧を返すエンドポイント
+    app.get('/mcp/tools', (req, res) => {
+      console.log('MCPツール一覧が要求されました。登録済みツール数:', stockTools.length);
+      res.json(stockTools.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters ? tool.parameters : {}
+      })));
+    });
+    
+    // MCP プラグイン情報を返すエンドポイント
+    app.get('/mcp/plugin/info', (req, res) => {
+      console.log('MCPプラグイン情報が要求されました');
+      res.json({
+        id: 'global-mcp-stock-server',
+        name: 'Global MCP Stock Server',
+        description: '株式市場の情報を提供するMCPサーバー',
+        version: '1.0.0',
+        tools: stockTools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters ? tool.parameters : {}
+        }))
+      });
+    });
+    
     // トランスポートセッション管理用のオブジェクト
     const transports: {[sessionId: string]: SSEServerTransport} = {};
 
