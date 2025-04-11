@@ -1,6 +1,6 @@
 {
   "name": "@sakura-ku/grobal-mcp-stock-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "dist/index.js",
   "bin": {
     "global-mcp-stock-server": "dist/bin.js"
@@ -56,6 +56,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
     "@polygon.io/client-js": "^7.4.0",
+    "@sakura-ku/grobal-mcp-stock-server": "file:sakura-ku-grobal-mcp-stock-server-1.0.2.tgz",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "danfojs": "^1.2.0",
