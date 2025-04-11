@@ -1,6 +1,6 @@
 import { Router, RequestHandler } from 'express';
 import { stockService } from '../services/stockService.js';
-import { stockAnalysisService } from '../services/stockAnalysisService.js';
+import stockAnalysisService from '../services/stockAnalysisService.js';
 import { InvalidParameterError } from '../errors/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -252,23 +252,17 @@ const analyzePortfolioHandler: RequestHandler = async (req, res) => {
 const analyzeStockTrendHandler: RequestHandler<{ symbol: string }> = async (req, res) => {
   try {
     const { symbol } = req.params;
-    const period = req.query.period ? parseInt(req.query.period as string, 10) : 60;
+    const period = req.query.period ? parseInt(req.query.period as string) : 60;
     
     if (!symbol) {
       res.status(400).json({ error: '銘柄コードは必須です' });
       return;
     }
     
-    // 期間のバリデーション
-    if (isNaN(period) || period < 10 || period > 365) {
-      res.status(400).json({ error: '期間は10〜365の範囲で指定してください' });
-      return;
-    }
-    
     const trendAnalysis = await stockAnalysisService.analyzeStockTrend(symbol, period);
     res.json(trendAnalysis);
   } catch (error) {
-    logger.error('株価トレンド分析API呼び出しエラー:', error);
+    logger.error('トレンド分析API呼び出しエラー:', error);
     
     if (error instanceof InvalidParameterError) {
       res.status(400).json({ error: error.message });
@@ -279,24 +273,20 @@ const analyzeStockTrendHandler: RequestHandler<{ symbol: string }> = async (req,
   }
 };
 
+// 未実装のメソッドを使用しているためコメントアウト
 /**
  * 株価予測ハンドラー
  * GET /api/stocks/predict/:symbol
  */
+/*
 const predictStockPriceHandler: RequestHandler<{ symbol: string }> = async (req, res) => {
   try {
     const { symbol } = req.params;
-    const days = req.query.days ? parseInt(req.query.days as string, 10) : 7;
-    const historyPeriod = req.query.history as string || '1y';
+    const days = req.query.days ? parseInt(req.query.days as string) : 7;
+    const historyPeriod = req.query.history_period as string || '1y';
     
     if (!symbol) {
       res.status(400).json({ error: '銘柄コードは必須です' });
-      return;
-    }
-    
-    // 日数のバリデーション
-    if (isNaN(days) || days < 1 || days > 30) {
-      res.status(400).json({ error: '予測日数は1〜30の範囲で指定してください' });
       return;
     }
     
@@ -313,25 +303,22 @@ const predictStockPriceHandler: RequestHandler<{ symbol: string }> = async (req,
     res.status(500).json({ error: '内部サーバーエラー' });
   }
 };
+*/
 
+// 未実装のメソッドを使用しているためコメントアウト
 /**
  * テクニカル分析ハンドラー
  * GET /api/stocks/technical/:symbol
  */
+/*
 const analyzeTechnicalHandler: RequestHandler<{ symbol: string }> = async (req, res) => {
   try {
     const { symbol } = req.params;
-    const interval = (req.query.interval as 'daily' | 'weekly' | 'monthly') || 'daily';
+    const interval = req.query.interval as 'daily' | 'weekly' | 'monthly' || 'daily';
     const indicators = req.query.indicators ? (req.query.indicators as string).split(',') : undefined;
     
     if (!symbol) {
       res.status(400).json({ error: '銘柄コードは必須です' });
-      return;
-    }
-    
-    // インターバルのバリデーション
-    if (!['daily', 'weekly', 'monthly'].includes(interval)) {
-      res.status(400).json({ error: 'インターバルはdaily, weekly, monthlyのいずれかを指定してください' });
       return;
     }
     
@@ -348,22 +335,22 @@ const analyzeTechnicalHandler: RequestHandler<{ symbol: string }> = async (req, 
     res.status(500).json({ error: '内部サーバーエラー' });
   }
 };
+*/
 
-// ルーターにハンドラーを登録
+// エンドポイント登録
 stockRouter.post('/price', getStockPriceHandler);
 stockRouter.post('/batch', getBatchStockPricesHandler);
 stockRouter.post('/analyze', analyzeStockHandler);
 stockRouter.post('/portfolio', analyzePortfolioHandler);
 
-// 具体的なパスを先に登録
+stockRouter.get('/:symbol', getStockBySymbolHandler);
 stockRouter.get('/history/:symbol', getStockHistoryHandler);
 stockRouter.get('/details/:symbol', getStockDetailsHandler);
 stockRouter.get('/search', searchStocksHandler);
 stockRouter.get('/trend/:symbol', analyzeStockTrendHandler);
-stockRouter.get('/predict/:symbol', predictStockPriceHandler);
-stockRouter.get('/technical/:symbol', analyzeTechnicalHandler);
 
-// 汎用的なパスを最後に登録
-stockRouter.get('/:symbol', getStockBySymbolHandler);
+// 未実装のハンドラーを使用しているためコメントアウト
+// stockRouter.get('/predict/:symbol', predictStockPriceHandler);
+// stockRouter.get('/technical/:symbol', analyzeTechnicalHandler);
 
 export default stockRouter; 

@@ -13,8 +13,9 @@ import {
   analyzePortfolioDefinition,
   analyzeStockTrendTool,
   stockTools,
-  predictStockPriceTool,
-  analyzeTechnicalTool
+  // 未実装のメソッドを参照しているためコメントアウト
+  // predictStockPriceTool,
+  // analyzeTechnicalTool
 } from './tools/stockTools.js';
 
 /**
@@ -97,6 +98,8 @@ async function setupMcpServer() {
     analyzeStockTrendTool.execute
   );
 
+  // 未実装のメソッドを参照しているためコメントアウト
+  /*
   // 株価予測ツール
   mcpServer.tool(
     predictStockPriceTool.name,
@@ -120,6 +123,7 @@ async function setupMcpServer() {
     },
     analyzeTechnicalTool.execute
   );
+  */
 
   return mcpServer;
 }

@@ -1,0 +1,520 @@
+﻿
+> @sakura-ku/grobal-mcp-stock-server@1.0.0 test
+> cross-env NODE_OPTIONS=--experimental-vm-modules jest src/__tests__/integration/polygonApi.test.ts
+
+  console.log
+    [INFO] 複数株価情報取得開始: AAPL, MSFT, GOOGL
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.log
+    [INFO] 株価情報取得開始: AAPL
+
+      at Object.info (src/utils/logger.ts:11:13)
+          at Array.map (<anonymous>)
+
+  console.log
+    [INFO] 株価情報取得開始: MSFT
+
+      at Object.info (src/utils/logger.ts:11:13)
+          at Array.map (<anonymous>)
+
+  console.log
+    [INFO] 株価情報取得開始: GOOGL
+
+      at Object.info (src/utils/logger.ts:11:13)
+          at Array.map (<anonymous>)
+
+  console.error
+    [ERROR] 株価取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at k (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7000)
+        at Object.previousClose (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7736)
+        at StockService.getStockPrice (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:91:48)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:51
+        at Array.map (<anonymous>)
+        at StockService.getMultipleStockPrices (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:32)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:59:46)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockPrice (src/services/stockService.ts:109:14)
+          at async Promise.all (index 0)
+      at StockService.getMultipleStockPrices (src/services/stockService.ts:130:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:59:27)
+
+  console.error
+    [ERROR] 株価取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at k (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7000)
+        at Object.previousClose (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7736)
+        at StockService.getStockPrice (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:91:48)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:51
+        at Array.map (<anonymous>)
+        at StockService.getMultipleStockPrices (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:32)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:59:46)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockPrice (src/services/stockService.ts:109:14)
+          at async Promise.all (index 1)
+      at StockService.getMultipleStockPrices (src/services/stockService.ts:130:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:59:27)
+
+  console.error
+    [ERROR] 株価取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at k (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7000)
+        at Object.previousClose (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7736)
+        at StockService.getStockPrice (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:91:48)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:51
+        at Array.map (<anonymous>)
+        at StockService.getMultipleStockPrices (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:32)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:59:46)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockPrice (src/services/stockService.ts:109:14)
+          at async Promise.all (index 2)
+      at StockService.getMultipleStockPrices (src/services/stockService.ts:130:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:59:27)
+
+  console.error
+    [ERROR] 複数株価取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at k (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7000)
+        at Object.previousClose (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7736)
+        at StockService.getStockPrice (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:91:48)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:51
+        at Array.map (<anonymous>)
+        at StockService.getMultipleStockPrices (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:129:32)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:59:46)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getMultipleStockPrices (src/services/stockService.ts:132:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:59:27)
+
+  console.log
+    [INFO] 株価情報取得開始: XYZABC123
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株価取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at k (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7000)
+        at Object.previousClose (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7736)
+        at StockService.getStockPrice (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:91:48)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:77:33)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockPrice (src/services/stockService.ts:109:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:77:7)
+
+  console.log
+    [INFO] 株価履歴取得開始: AAPL, インターバル: daily, 期間: 1m
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株価履歴取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at x (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:6786)
+        at Object.aggregates (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7543)
+        at StockService.getStockHistory (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:182:56)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:121:47)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockHistory (src/services/stockService.ts:210:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:121:28)
+
+  console.log
+    [INFO] 株式詳細情報取得開始: AAPL
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株式詳細情報取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at he (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:4864)
+        at Object.tickerDetails (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:5436)
+        at StockService.getStockDetails (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:235:59)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:138:42)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockDetails (src/services/stockService.ts:261:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:138:23)
+
+  console.log
+    [INFO] 株式検索開始: Apple
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株式検索エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at Qe (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:4970)
+        at Object.tickers (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:5493)
+        at StockService.searchStocks (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:430:59)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:156:48)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.searchStocks (src/services/stockService.ts:458:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:156:29)
+
+  console.log
+    [INFO] 株価情報取得開始: AAPL
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株価取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at k (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7000)
+        at Object.previousClose (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7736)
+        at StockService.getStockPrice (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:91:48)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:177:45)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockPrice (src/services/stockService.ts:109:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:177:26)
+
+  console.log
+    [INFO] 株価履歴取得開始: AAPL, インターバル: daily, 期間: 1m
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株価履歴取得エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at x (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:6786)
+        at Object.aggregates (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7543)
+        at StockService.getStockHistory (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:182:56)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:190:46)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.getStockHistory (src/services/stockService.ts:210:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:190:27)
+
+  console.log
+    [INFO] 株価トレンド分析開始: AAPL, 期間: 60日
+
+      at Object.info (src/utils/logger.ts:11:13)
+
+  console.error
+    [ERROR] 株価トレンド分析エラー: TypeError: Only absolute URLs are supported
+        at getNodeRequestOptions (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1327:9)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1450:19
+        at new Promise (<anonymous>)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\node_modules\node-fetch\lib\index.js:1447:9)
+        at fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\cross-fetch\dist\node-ponyfill.js:10:20)
+        at Object.fetch (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:49)
+        at u (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:548)
+        at C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:1083
+        at x (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:6786)
+        at Object.aggregates (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\@polygon.io\client-js\dist\main.js:1:7543)
+        at StockService.analyzeStockTrend (C:\Users\niced\Project\grobal_mcp_stock_server\src\services\stockService.ts:841:56)
+        at Object.<anonymous> (C:\Users\niced\Project\grobal_mcp_stock_server\src\__tests__\integration\polygonApi.test.ts:213:48)
+        at Promise.then.completed (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:298:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\utils.js:231:10)
+        at _callCircusTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:316:40)
+        at _runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:252:3)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:126:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at _runTestsForDescribeBlock (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:121:9)
+        at run (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\run.js:71:3)
+        at runAndTransformResultsToJestFormat (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+        at jestAdapter (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-circus\build\legacy-code-todo-rewrite\jestAdapter.js:79:19)
+        at runTestInternal (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:367:16)
+        at runTest (C:\Users\niced\Project\grobal_mcp_stock_server\node_modules\jest-runner\build\runTest.js:444:34)
+
+    [0m [90m 18 |[39m [90m   */[39m
+     [90m 19 |[39m   error[33m:[39m (message[33m:[39m string[33m,[39m [33m...[39margs[33m:[39m any[])[33m:[39m [36mvoid[39m [33m=>[39m {
+    [31m[1m>[22m[39m[90m 20 |[39m     console[33m.[39merror([32m`[ERROR] ${message}`[39m[33m,[39m [33m...[39margs)[33m;[39m
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 21 |[39m   }[33m,[39m
+     [90m 22 |[39m
+     [90m 23 |[39m   [90m/**[39m[0m
+
+      at Object.error (src/utils/logger.ts:20:13)
+      at StockService.analyzeStockTrend (src/services/stockService.ts:951:14)
+      at Object.<anonymous> (src/__tests__/integration/polygonApi.test.ts:213:29)
+

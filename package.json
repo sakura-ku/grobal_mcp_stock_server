@@ -18,28 +18,29 @@
   ],
   "scripts": {
     "build": "rimraf dist && tsc",
+    "build:dev": "cross-env NODE_ENV=development npm run build",
+    "build:prod": "cross-env NODE_ENV=production npm run build -- --sourceMap false",
     "start": "node dist/index.js",
-    "dev": "cross-env TSC_COMPILE_ON_ERROR=true nodemon --exec \"npm run build && npm run start\" --watch src",
+    "start:dev": "cross-env NODE_ENV=development node dist/index.js",
+    "start:prod": "cross-env NODE_ENV=production node dist/index.js",
+    "dev": "cross-env NODE_ENV=development TSC_COMPILE_ON_ERROR=true nodemon --exec \"npm run build:dev && npm run start:dev\" --watch src",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run build:prod",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage",
+    "test:unit": "jest --testPathPattern=src/__tests__/unit",
+    "test:integration": "jest --testPathPattern=src/__tests__/integration",
+    "test:services": "jest --testPathPattern=src/__tests__/services",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "deploy:staging": "node scripts/deploy.js staging",
+    "deploy:production": "node scripts/deploy.js production",
     "publish:package": "npm publish",
-    "prepare:package": "npm run build && npm pack"
-  },
-  "jest": {
-    "preset": "ts-jest/presets/default-esm",
-    "testEnvironment": "node",
-    "extensionsToTreatAsEsm": [".ts"],
-    "moduleNameMapper": {
-      "^(\\.{1,2}/.*)\\.js$": "$1"
-    },
-    "transform": {
-      "^.+\\.tsx?$": ["ts-jest", { "useESM": true }]
-    }
+    "prepare:package": "npm run build:prod && npm pack"
   },
   "repository": {
     "type": "git",
@@ -54,6 +55,7 @@
   "homepage": "https://github.com/sakura-ku/grobal_mcp_stock_server#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
+    "@polygon.io/client-js": "^7.4.0",
     "body-parser": "^2.2.0",
     "danfojs": "^1.2.0",
     "dotenv": "^16.4.5",
@@ -61,7 +63,6 @@
     "openai": "^4.93.0",
     "technicalindicators": "^3.1.0",
     "uuid": "^11.1.0",
-    "yahoo-finance2": "^2.13.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
