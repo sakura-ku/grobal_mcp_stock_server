@@ -1,6 +1,6 @@
 {
   "name": "@sakura-ku/grobal-mcp-stock-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "dist/index.js",
   "bin": {
     "global-mcp-stock-server": "dist/bin.js"
