@@ -57,6 +57,7 @@
     "@modelcontextprotocol/sdk": "^1.8.0",
     "@polygon.io/client-js": "^7.4.0",
     "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
     "danfojs": "^1.2.0",
     "dotenv": "^16.4.5",
     "numjs": "^0.16.1",
@@ -66,6 +67,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/dotenv": "^8.2.0",
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",

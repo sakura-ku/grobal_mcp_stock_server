@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import { config } from './config/index.js';
 import apiRouter from './routes/index.js';
@@ -17,6 +18,7 @@ import {
   // predictStockPriceTool,
   // analyzeTechnicalTool
 } from './tools/stockTools.js';
+import cors from 'cors';
 
 /**
  * MCPサーバーを設定する関数
@@ -142,12 +144,69 @@ export async function startServer(port: number = config.server.port, host: strin
     // ミドルウェアの設定
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
-
-    // MCPサーバーの初期化
-    const mcpServer = await setupMcpServer();
+    app.use(cors()); // CORSを有効化
 
     // APIルートのマウント
     app.use('/api', apiRouter);
+
+    // MCPサーバーの初期化
+    const mcpServer = await setupMcpServer();
+    
+    // トランスポートセッション管理用のオブジェクト
+    const transports: {[sessionId: string]: SSEServerTransport} = {};
+
+    // MCPのSSEエンドポイント
+    app.get('/mcp', (req, res) => {
+      console.log('新しいMCP SSE接続を受信しました');
+      try {
+        const transport = new SSEServerTransport('/mcp-messages', res);
+        transports[transport.sessionId] = transport;
+        
+        // SSEセッションが閉じられたらトランスポートを削除
+        res.on('close', () => {
+          console.log(`SSEセッションが閉じられました: ${transport.sessionId}`);
+          delete transports[transport.sessionId];
+        });
+        
+        // MCPサーバーとトランスポートを接続
+        // connect()は内部でstart()を呼び出すので、個別にstart()を呼び出す必要はない
+        mcpServer.connect(transport).then(() => {
+          console.log(`MCPサーバーがトランスポートに接続されました: ${transport.sessionId}`);
+        }).catch(err => {
+          console.error('MCPサーバー接続エラー:', err);
+        });
+      } catch (error) {
+        console.error('MCP SSE接続エラー:', error);
+        res.status(500).send('MCP SSE接続エラー');
+      }
+    });
+
+    // MCPメッセージ受信エンドポイント
+    app.post('/mcp-messages', async (req, res) => {
+      const sessionId = req.query.sessionId as string;
+      console.log(`MCPメッセージを受信しました, セッションID: ${sessionId}`);
+      
+      const transport = transports[sessionId];
+      if (transport) {
+        try {
+          await transport.handlePostMessage(req, res);
+        } catch (error) {
+          console.error('MCPメッセージ処理エラー:', error);
+          // エラーはhandlePostMessage内で処理されているため、ここではレスポンスを送信しない
+        }
+      } else {
+        console.error(`セッションIDに対応するトランスポートが見つかりません: ${sessionId}`);
+        res.status(400).send('セッションIDに対応するトランスポートが見つかりません');
+      }
+    });
+    
+    // Expressサーバーの作成
+    const httpServer = app.listen(port, host, () => {
+      console.log(`サーバーが起動しました: http://${host}:${port}`);
+      console.log(`APIエンドポイント: http://${host}:${port}/api`);
+      console.log(`MCPエンドポイント: http://${host}:${port}/mcp`);
+      console.log(`MCP Webフォーム: http://${host}:${port}/`);
+    });
 
     // フロントエンドのHTMLを提供
     app.get('/', (req, res) => {
@@ -174,6 +233,7 @@ export async function startServer(port: number = config.server.port, host: strin
               <div class="tab active" data-target="single">単一銘柄取得</div>
               <div class="tab" data-target="multiple">複数銘柄取得</div>
               <div class="tab" data-target="analysis">株価分析</div>
+              <div class="tab" data-target="mcp">MCPテスト</div>
             </div>
             
             <div id="single" class="panel active">
@@ -209,6 +269,30 @@ export async function startServer(port: number = config.server.port, host: strin
               <pre id="analysisResult">ここに結果が表示されます</pre>
             </div>
             
+            <div id="mcp" class="panel">
+              <h2>MCPテスト</h2>
+              <p>MCPサーバーに接続して、利用可能なツールを取得します</p>
+              <button id="mcpConnect">接続</button>
+              <button id="mcpToolsList" disabled>ツール一覧取得</button>
+              
+              <div id="mcpToolForm" style="display: none; margin-top: 20px;">
+                <h3>ツール呼び出し:</h3>
+                <form id="toolCallForm">
+                  <div>
+                    <label for="toolName">ツール名:</label>
+                    <select id="toolName" required></select>
+                  </div>
+                  <div id="toolParams" style="margin-top: 10px;">
+                    <!-- パラメータフォームが動的に追加されます -->
+                  </div>
+                  <button type="submit" style="margin-top: 10px;">実行</button>
+                </form>
+              </div>
+              
+              <h3>ログ:</h3>
+              <pre id="mcpLog" style="height: 200px; overflow-y: scroll;">MCPログがここに表示されます</pre>
+            </div>
+            
             <script>
               // タブ切り替え
               document.querySelectorAll('.tab').forEach(tab => {
@@ -238,15 +322,14 @@ export async function startServer(port: number = config.server.port, host: strin
                   const data = await response.json();
                   resultEl.textContent = JSON.stringify(data, null, 2);
                 } catch (err) {
-                  resultEl.textContent = '取得エラー: ' + err;
+                  resultEl.textContent = 'エラーが発生しました: ' + err.message;
                 }
               });
               
               // 複数銘柄フォーム
               document.getElementById('multipleForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const symbolsStr = document.getElementById('symbols').value;
-                const symbols = symbolsStr.split(',').map(s => s.trim());
+                const symbols = document.getElementById('symbols').value.split(',').map(s => s.trim());
                 const resultEl = document.getElementById('multipleResult');
                 
                 try {
@@ -260,7 +343,7 @@ export async function startServer(port: number = config.server.port, host: strin
                   const data = await response.json();
                   resultEl.textContent = JSON.stringify(data, null, 2);
                 } catch (err) {
-                  resultEl.textContent = '取得エラー: ' + err;
+                  resultEl.textContent = 'エラーが発生しました: ' + err.message;
                 }
               });
               
@@ -281,8 +364,134 @@ export async function startServer(port: number = config.server.port, host: strin
                   const data = await response.json();
                   resultEl.textContent = JSON.stringify(data, null, 2);
                 } catch (err) {
-                  resultEl.textContent = '分析エラー: ' + err;
+                  resultEl.textContent = 'エラーが発生しました: ' + err.message;
                 }
+              });
+              
+              // MCPクライアント
+              let mcpSessionId = null;
+              let mcpEventSource = null;
+              let messageId = 1;
+              let tools = [];
+              
+              const mcpLog = document.getElementById('mcpLog');
+              const logMessage = (msg) => {
+                mcpLog.textContent += '\\n' + msg;
+                mcpLog.scrollTop = mcpLog.scrollHeight;
+              };
+              
+              document.getElementById('mcpConnect').addEventListener('click', async () => {
+                if (mcpEventSource) {
+                  mcpEventSource.close();
+                }
+                
+                logMessage('MCPサーバーに接続中...');
+                
+                // SSE接続を開始
+                mcpEventSource = new EventSource('/mcp');
+                
+                mcpEventSource.addEventListener('endpoint', (e) => {
+                  const endpoint = decodeURI(e.data);
+                  const [url, params] = endpoint.split('?');
+                  const urlParams = new URLSearchParams(params);
+                  mcpSessionId = urlParams.get('sessionId');
+                  
+                  logMessage('接続成功: セッションID = ' + mcpSessionId);
+                  document.getElementById('mcpToolsList').disabled = false;
+                  
+                  // initialize呼び出し
+                  sendMcpRequest({
+                    jsonrpc: '2.0',
+                    id: messageId++,
+                    method: 'initialize',
+                    params: {
+                      protocolVersion: '0.3',
+                      clientInfo: {
+                        name: 'WebTestClient',
+                        version: '1.0.0'
+                      },
+                      capabilities: {}
+                    }
+                  });
+                });
+                
+                mcpEventSource.addEventListener('message', (e) => {
+                  const message = JSON.parse(e.data);
+                  logMessage('受信: ' + JSON.stringify(message, null, 2));
+                  
+                  // initialize応答を処理
+                  if (message.result && message.id === 1) {
+                    sendMcpRequest({
+                      jsonrpc: '2.0',
+                      method: 'initialized'
+                    });
+                  }
+                });
+                
+                mcpEventSource.onerror = () => {
+                  logMessage('SSE接続エラー');
+                };
+              });
+              
+              async function sendMcpRequest(request) {
+                if (!mcpSessionId) {
+                  logMessage('エラー: セッションIDがありません');
+                  return;
+                }
+                
+                logMessage('送信: ' + JSON.stringify(request, null, 2));
+                
+                try {
+                  const response = await fetch('/mcp-messages?sessionId=' + mcpSessionId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(request)
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error('HTTP error: ' + response.status);
+                  }
+                } catch (err) {
+                  logMessage('リクエストエラー: ' + err.message);
+                }
+              }
+              
+              // ツール一覧取得
+              document.getElementById('mcpToolsList').addEventListener('click', () => {
+                sendMcpRequest({
+                  jsonrpc: '2.0',
+                  id: messageId++,
+                  method: 'tools/list',
+                  params: {}
+                });
+              });
+              
+              // ツール呼び出しフォーム
+              document.getElementById('toolCallForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const toolName = document.getElementById('toolName').value;
+                const tool = tools.find(t => t.name === toolName);
+                const params = {};
+                
+                // フォームからパラメータを収集
+                for (const param of Object.keys(tool.parameters)) {
+                  const inputEl = document.getElementById('param-' + param);
+                  if (inputEl) {
+                    // 数値パラメータの場合は変換
+                    const paramType = tool.parameters[param].type;
+                    params[param] = paramType === 'number' ? Number(inputEl.value) : inputEl.value;
+                  }
+                }
+                
+                sendMcpRequest({
+                  jsonrpc: '2.0',
+                  id: messageId++,
+                  method: 'tools/call',
+                  params: {
+                    name: toolName,
+                    parameters: params
+                  }
+                });
               });
             </script>
           </body>
@@ -290,28 +499,35 @@ export async function startServer(port: number = config.server.port, host: strin
       `);
     });
 
-    // サーバーを起動
-    const server = app.listen(port, host, () => {
-      console.log(`サーバーが起動しました: http://${host}:${port}`);
-      console.log(`APIエンドポイント: http://${host}:${port}/api`);
-      console.log(`MCP Webフォーム: http://${host}:${port}/`);
-    });
-
     // 終了処理
     const gracefulShutdown = async () => {
       console.log('サーバーをシャットダウンしています...');
-      await mcpServer.close();
-      server.close(() => {
-        console.log('サーバーが停止しました');
-        process.exit(0);
-      });
+      try {
+        // mcpServerが存在する場合のみclose()を呼び出す
+        if (mcpServer) {
+          await mcpServer.close();
+        }
+        if (httpServer) {
+          httpServer.close(() => {
+            console.log('サーバーが停止しました');
+            process.exit(0);
+          });
+        } else {
+          console.log('サーバーが停止しました');
+          process.exit(0);
+        }
+      } catch (error) {
+        console.error('シャットダウンエラー:', error);
+        process.exit(1);
+      }
     };
 
     // シグナルハンドラの設定
     process.on('SIGINT', gracefulShutdown);
     process.on('SIGTERM', gracefulShutdown);
 
-    return server;
+    console.log('サーバーの設定が完了しました。');
+    return httpServer;
   } catch (error) {
     console.error('サーバー起動エラー:', error);
     process.exit(1);
@@ -319,6 +535,30 @@ export async function startServer(port: number = config.server.port, host: strin
 }
 
 // スタンドアロンで実行された場合は自動的にサーバーを起動
-if (import.meta.url === `file://${process.argv[1]}`) {
-  startServer();
+if (process.argv[1] === import.meta.url.substring(8) || process.argv[1] === 'dist/index.js' || process.argv[1].includes('index.js')) {
+  console.log('スタンドアロンモードでサーバーを起動します...');
+  console.log(`実行ファイル: ${process.argv[1]}`);
+  console.log(`import.meta.url: ${import.meta.url}`);
+  
+  startServer().then((server) => {
+    console.log('サーバーが正常に起動しました。Ctrl+Cで終了できます。');
+  }).catch((error) => {
+    console.error('サーバー起動に失敗しました:', error);
+    process.exit(1);
+  });
+} else {
+  console.log('モジュールとしてインポートされました。');
+  console.log(`実行ファイル: ${process.argv[1]}`);
+  console.log(`import.meta.url: ${import.meta.url}`);
+  
+  // 開発環境やテスト環境では明示的にstartServerを呼び出す
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    console.log('開発環境のため自動的にサーバーを起動します...');
+    startServer().then((server) => {
+      console.log('サーバーが正常に起動しました。Ctrl+Cで終了できます。');
+    }).catch((error) => {
+      console.error('サーバー起動に失敗しました:', error);
+      process.exit(1);
+    });
+  }
 }
